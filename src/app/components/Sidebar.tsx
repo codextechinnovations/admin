@@ -17,7 +17,8 @@ import {
   ChevronLeft,
   ChevronRight,
   CreditCard as IdCard,
-  Upload
+  Upload,
+  UserCheck
 } from 'lucide-react';
 
 interface NavItem {
@@ -30,6 +31,7 @@ const navItems: NavItem[] = [
   { name: 'Dashboard', path: '/', icon: LayoutDashboard },
   { name: 'PG Management', path: '/pg-management', icon: Building2 },
   { name: 'PG CSV Upload', path: '/pg-csv-upload', icon: Upload },
+  { name: 'PG Owner Verify', path: '/pg-owner-verification', icon: UserCheck },
   { name: 'Tenants', path: '/tenants', icon: Users },
   { name: 'Bookings', path: '/bookings', icon: Calendar },
   { name: 'Payments', path: '/payments', icon: CreditCard },

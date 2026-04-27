@@ -122,6 +122,37 @@ export const adminService = {
     return await put<ApiResponse<any>>(`/admin/admin-users/${id}/toggle-status`, {});
   },
 
+  // Sales Person Management
+  getSalesPersons: async (params?: { search?: string; isActive?: boolean }): Promise<ApiResponse<any>> => {
+    return await get<ApiResponse<any>>('/admin/sales-persons', { params });
+  },
+  createSalesPerson: async (data: { name: string; email: string; phone: string; password: string; role?: string }): Promise<ApiResponse<any>> => {
+    return await post<ApiResponse<any>>('/admin/sales-persons', data);
+  },
+  updateSalesPerson: async (id: string, data: any): Promise<ApiResponse<any>> => {
+    return await put<ApiResponse<any>>(`/admin/sales-persons/${id}`, data);
+  },
+  deleteSalesPerson: async (id: string): Promise<ApiResponse<any>> => {
+    return await del<ApiResponse<any>>(`/admin/sales-persons/${id}`);
+  },
+  toggleSalesPersonStatus: async (id: string): Promise<ApiResponse<any>> => {
+    return await put<ApiResponse<any>>(`/admin/sales-persons/${id}/toggle-status`, {});
+  },
+
+  // PG Owner Management
+  getPGOwners: async (params?: { status?: string; search?: string }): Promise<ApiResponse<any>> => {
+    return await get<ApiResponse<any>>('/admin/pg-owners', { params });
+  },
+  getPGOwnerById: async (id: string): Promise<ApiResponse<any>> => {
+    return await get<ApiResponse<any>>(`/admin/pg-owners/${id}`);
+  },
+  getPGOwnerPGs: async (id: string): Promise<ApiResponse<any>> => {
+    return await get<ApiResponse<any>>(`/admin/pg-owners/${id}/pgs`);
+  },
+  verifyPGOwner: async (id: string, data: { status: string; isVerified: boolean }): Promise<ApiResponse<any>> => {
+    return await put<ApiResponse<any>>(`/admin/pg-owners/${id}/verify`, data);
+  },
+
   // Reports
   getReports: async (params?: { type?: string; startDate?: string; endDate?: string }): Promise<ApiResponse<any>> => {
     return await get<ApiResponse<any>>('/admin/reports', { params });

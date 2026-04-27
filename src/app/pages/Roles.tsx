@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { Shield, UserPlus, Edit2, Trash2, Users } from 'lucide-react';
+import { Shield, UserPlus, Edit2, Trash2, Users, UserCog } from 'lucide-react';
 import { PageHeader } from '../components/PageHeader';
 import { DataTable } from '../components/DataTable';
 import { Modal, FormField, Badge } from '../../components/Modal';
@@ -10,14 +10,16 @@ const rolePermissions = {
   super_admin: ['All Permissions', 'User Management', 'System Configuration', 'Data Export'],
   admin: ['All Permissions', 'User Management', 'PG Management', 'Reports'],
   operations: ['Complaints', 'Support', 'Notifications', 'Basic Analytics'],
-  support: ['Complaints', 'Support Tickets', 'User Queries']
+  support: ['Complaints', 'Support Tickets', 'User Queries'],
+  sales_person: ['View PGs', 'Tenant Leads', 'Generate Bookings', 'Basic Reports']
 };
 
 const roleColors = {
   super_admin: 'bg-purple-500/10 text-purple-500',
   admin: 'bg-blue-500/10 text-blue-500',
   operations: 'bg-green-500/10 text-green-500',
-  support: 'bg-orange-500/10 text-orange-500'
+  support: 'bg-orange-500/10 text-orange-500',
+  sales_person: 'bg-cyan-500/10 text-cyan-500'
 };
 
 interface AdminUser {
@@ -25,7 +27,7 @@ interface AdminUser {
   name: string;
   email: string;
   phone?: string;
-  role: 'super_admin' | 'admin' | 'operations' | 'support';
+  role: 'super_admin' | 'admin' | 'operations' | 'support' | 'sales_person';
   isActive: boolean;
   lastActive?: string;
   createdAt: string;
@@ -41,20 +43,28 @@ export function Roles() {
   const [roleFilter, setRoleFilter] = useState<string>('');
 
   const [newUser, setNewUser] = useState({
-    name: '', email: '', phone: '', password: '', role: 'admin' as const, permissions: [] as string[]
+    name: '', email: '', phone: '', password: '', role: 'sales_person' as const, permissions: [] as string[]
   });
 
   useEffect(() => {
     fetchUsers();
   }, [roleFilter]);
 
-  const fetchUsers = async () => {
+const fetchUsers = async () => {
     try {
       setLoading(true);
-      const response = await adminService.getAdminUsers({ 
-        limit: 100, 
-        role: roleFilter || undefined 
-      });
+      let response;
+      if (roleFilter === 'sales_person') {
+        response = await adminService.getSalesPersons({ isActive: undefined });
+      } else if (roleFilter) {
+        response = await adminService.getAdminUsers({ limit: 100, role: roleFilter });
+      } else {
+        const [adminRes, salesRes] = await Promise.all([
+          adminService.getAdminUsers({ limit: 100 }),
+          adminService.getSalesPersons({})
+        ]);
+        response = { success: true, data: [...(salesRes.data || []), ...(adminRes.data || [])] };
+      }
       if (response.success) {
         setUsers(response.data);
       } else {
@@ -63,18 +73,27 @@ export function Roles() {
     } catch (err) {
       setError('Failed to fetch users');
       console.error('Error fetching users:', err);
-    } finally {
-      setLoading(false);
     }
   };
 
   const handleAddUser = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const response = await adminService.createAdminUser(newUser);
+      let response;
+      if (newUser.role === 'sales_person') {
+        response = await adminService.createSalesPerson({
+          name: newUser.name,
+          email: newUser.email,
+          phone: newUser.phone,
+          password: newUser.password,
+          role: 'salesperson'
+        });
+      } else {
+        response = await adminService.createAdminUser(newUser);
+      }
       if (response.success) {
         setShowAddModal(false);
-        setNewUser({ name: '', email: '', phone: '', password: '', role: 'admin', permissions: [] });
+        setNewUser({ name: '', email: '', phone: '', password: '', role: 'sales_person', permissions: [] });
         fetchUsers();
       }
     } catch (err) {
@@ -174,7 +193,8 @@ export function Roles() {
   ];
 
   const activeUsers = users.filter(u => u.isActive);
-  const totalRoles = ['super_admin', 'admin', 'operations', 'support'].length;
+  const salesPersonCount = users.filter(u => u.role === 'sales_person').length;
+  const totalRoles = ['super_admin', 'admin', 'operations', 'support', 'sales_person'].length;
 
   return (
     <div>
@@ -184,12 +204,12 @@ export function Roles() {
         action={
           <button onClick={() => setShowAddModal(true)} className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-[#2d2d7e] to-[#1e3a8a] text-white rounded-lg shadow-lg hover:shadow-xl transition-all">
             <UserPlus className="w-4 h-4" />
-            Add Admin
+            Add User
           </button>
         }
       />
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-card/50 backdrop-blur-xl rounded-xl border border-border p-4">
           <div className="flex items-center gap-3">
             <div className="p-3 bg-blue-500/10 rounded-xl">
@@ -209,6 +229,17 @@ export function Roles() {
             <div>
               <p className="text-sm text-muted-foreground">Active</p>
               <p className="text-2xl font-semibold text-green-500">{activeUsers.length}</p>
+            </div>
+          </div>
+        </motion.div>
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} className="bg-card/50 backdrop-blur-xl rounded-xl border border-border p-4">
+          <div className="flex items-center gap-3">
+            <div className="p-3 bg-cyan-500/10 rounded-xl">
+              <UserCog className="w-6 h-6 text-cyan-500" />
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Sales Persons</p>
+              <p className="text-2xl font-semibold text-cyan-500">{salesPersonCount}</p>
             </div>
           </div>
         </motion.div>
@@ -237,7 +268,7 @@ export function Roles() {
       </div>
 
       {/* Role Permissions Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
         {Object.entries(rolePermissions).map(([role, perms], i) => (
           <motion.div
             key={role}
@@ -273,6 +304,7 @@ export function Roles() {
               onChange={(e) => setRoleFilter(e.target.value)}
             >
               <option value="">All Roles</option>
+              <option value="sales_person">Sales Person</option>
               <option value="super_admin">Super Admin</option>
               <option value="admin">Admin</option>
               <option value="operations">Operations</option>
@@ -292,7 +324,7 @@ export function Roles() {
       </motion.div>
 
       {/* Add Admin Modal */}
-      <Modal isOpen={showAddModal} onClose={() => setShowAddModal(false)} title="Add New Admin" size="md">
+      <Modal isOpen={showAddModal} onClose={() => setShowAddModal(false)} title="Add New User" size="md">
         <form onSubmit={handleAddUser}>
           <div className="space-y-4">
             <FormField label="Name *">
@@ -341,6 +373,7 @@ export function Roles() {
                 value={newUser.role}
                 onChange={(e) => setNewUser({ ...newUser, role: e.target.value as any })}
               >
+                <option value="sales_person">Sales Person</option>
                 <option value="super_admin">Super Admin</option>
                 <option value="admin">Admin</option>
                 <option value="operations">Operations</option>
@@ -389,6 +422,7 @@ export function Roles() {
                   value={selectedUser.role}
                   onChange={(e) => setSelectedUser({ ...selectedUser, role: e.target.value as any })}
                 >
+                  <option value="sales_person">Sales Person</option>
                   <option value="super_admin">Super Admin</option>
                   <option value="admin">Admin</option>
                   <option value="operations">Operations</option>

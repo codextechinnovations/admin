@@ -18,6 +18,8 @@ import { Settings } from './pages/Settings';
 import { NotFound } from './pages/NotFound';
 import { IdCardGenerator } from './pages/IdCardGenerator';
 import { PGCSVUpload } from './pages/PGCSVUpload';
+import { PGOwnerVerification } from './pages/PGOwnerVerification';
+import { PGOwnerDetail } from './pages/PGOwnerDetail';
 
 export const router = createBrowserRouter([
   {
@@ -35,6 +37,8 @@ export const router = createBrowserRouter([
       { index: true, Component: Dashboard },
       { path: 'pg-management', Component: PGManagement },
       { path: 'pg-csv-upload', Component: PGCSVUpload },
+      { path: 'pg-owner-verification', Component: PGOwnerVerification },
+      { path: 'pg-owner-verification/:id', Component: PGOwnerDetail },
       { path: 'tenants', Component: Tenants },
       { path: 'bookings', Component: Bookings },
       { path: 'payments', Component: Payments },
