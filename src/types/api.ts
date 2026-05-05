@@ -31,6 +31,7 @@ export interface PG {
   amenities?: string[];
   createdAt: string;
   updatedAt: string;
+  status : string;
 }
 
 export interface Tenant {

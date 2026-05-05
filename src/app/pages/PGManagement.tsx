@@ -12,12 +12,14 @@ export function PGManagement() {
   const [owners, setOwners] = useState<{_id: string; name: string}[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [selectedPG, setSelectedPG] = useState<PG | null>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [pgDetails, setPgDetails] = useState<any>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [ownerFilter, setOwnerFilter] = useState<string>('');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
 
   const [newPG, setNewPG] = useState({
     name: '', type: 'male', ownerId: '', address: '', city: '', state: '', pincode: '',
@@ -99,10 +101,16 @@ export function PGManagement() {
   const handleDelete = async (pgId: string) => {
     if (!confirm('Are you sure you want to delete this PG?')) return;
     try {
-      await adminService.deletePG(pgId);
-      fetchPGs();
-    } catch (err) {
+      setDeleteError(null);
+      const response = await adminService.deletePG(pgId);
+      if (response.success) {
+        fetchPGs();
+      } else {
+        setDeleteError(response.message || 'Failed to delete PG');
+      }
+    } catch (err: any) {
       console.error('Error deleting PG:', err);
+      setDeleteError(err.response?.data?.message || err.message || 'Failed to delete PG. Please try again.');
     }
   };
 
@@ -140,27 +148,16 @@ export function PGManagement() {
       )
     },
     { key: 'totalRooms', label: 'Rooms', sortable: true, render: (v: number) => <span>{v || 0}</span> },
-    {
-      key: 'longTermRent',
-      label: 'Long Term',
-      sortable: true,
-      render: (v: number) => v ? `₹${v?.toLocaleString()}` : '-'
-    },
-    {
-      key: 'shortTermRent',
-      label: 'Short Term',
-      sortable: true,
-      render: (v: number) => v ? `₹${v?.toLocaleString()}` : '-'
-    },
+    
     {
       key: 'isVerified',
       label: 'Verified',
       render: (v: boolean) => v ? <Badge variant="success"><CheckCircle className="w-3 h-3 mr-1" /> Yes</Badge> : <Badge variant="warning"><Clock className="w-3 h-3 mr-1" /> Pending</Badge>
     },
     {
-      key: 'isAvailable',
+      key: 'status',
       label: 'Status',
-      render: (v: boolean) => v ? <Badge variant="success">Active</Badge> : <Badge variant="danger">Inactive</Badge>
+      render: (v: string) => v === 'active' ? <Badge variant="success">Active</Badge> : <Badge variant="danger">Inactive</Badge>
     },
     {
       key: 'actions',
@@ -173,9 +170,11 @@ export function PGManagement() {
           <button onClick={() => handleVerify(row._id, !row.isVerified)} className="p-2 hover:bg-accent rounded-lg transition-colors" title={row.isVerified ? 'Unverify' : 'Verify'}>
             <Shield className={`w-4 h-4 ${row.isVerified ? 'text-green-500' : 'text-yellow-500'}`} />
           </button>
-          <button onClick={() => handleDelete(row._id)} className="p-2 hover:bg-accent rounded-lg transition-colors text-red-500" title="Delete">
-            <Trash2 className="w-4 h-4" />
-          </button>
+          {row.status !== 'deleted' && (
+            <button onClick={() => handleDelete(row._id)} className="p-2 hover:bg-accent rounded-lg transition-colors text-red-500" title="Delete">
+              <Trash2 className="w-4 h-4" />
+            </button>
+          )}
         </div>
       )
     }
@@ -185,8 +184,14 @@ export function PGManagement() {
   const verifiedPGs = pgs.filter(pg => pg.isVerified);
   const totalRooms = pgs.reduce((sum, pg) => sum + (pg.totalRooms || 0), 0);
 
-  return (
+   return (
     <div>
+      {deleteError && (
+        <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-500 text-sm flex justify-between items-center">
+          <span>{deleteError}</span>
+          <button onClick={() => setDeleteError(null)} className="text-red-500 hover:text-red-700 font-bold">✕</button>
+        </div>
+      )}
       <PageHeader
         title="PG Management"
         description="Manage all PGs on the platform. Assign owners and verify listings."
