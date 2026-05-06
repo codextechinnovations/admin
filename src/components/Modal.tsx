@@ -37,7 +37,7 @@ export function Modal({ isOpen, onClose, title, children, size = 'md' }: ModalPr
       {isOpen && (
         <>
           <motion.div
-            initial={{ opacity: 0 }}
+            initial={{ opacity: 0.2 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
