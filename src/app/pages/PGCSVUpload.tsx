@@ -27,6 +27,8 @@ const sampleCSV = `Name,Address,Phone,Lat,Lng,Type,Image,Link
 "Royal paying guest pg mens","27, 1st Main Rd Yelahanka","072045 52872",13.096499,77.5833064,gents,"https://example.com/image2.jpg","https://maps.google.com/place2"
 "Aathithya PG","584, 11th B Main Rd","",13.0987609,77.5794166,ladies,"https://example.com/image3.jpg","https://maps.google.com/place3"`;
 
+// Phone numbers will be formatted: "095916 99009" → "9591699009", "072045 52872" → "7204552872"
+
 export function PGCSVUpload() {
   const [file, setFile] = useState<File | null>(null);
   const [parsedData, setParsedData] = useState<PGUploadRow[]>([]);
@@ -45,6 +47,13 @@ export function PGCSVUpload() {
       setFile(selectedFile);
       parseCSV(selectedFile);
     }
+  };
+
+  const formatPhoneNumber = (phone: string): string => {
+    if (!phone) return '';
+    let cleaned = phone.replace(/\s/g, '').replace(/[-()]/g, '');
+    cleaned = cleaned.replace(/^0+/, '');
+    return cleaned;
   };
 
   const parseCSV = (file: File) => {
@@ -81,11 +90,22 @@ export function PGCSVUpload() {
         const latStr = getValue('Lat');
         const lngStr = getValue('Lng');
 
+        const rawPhone = getValue('Phone');
+        const formattedPhone = formatPhoneNumber(rawPhone);
+
+        if (!formattedPhone) {
+          continue;
+        }
+
+        if (formattedPhone.length !== 10 || !/^\d{10}$/.test(formattedPhone)) {
+          continue;
+        }
+
         const row: PGUploadRow = {
           row: i + 1,
           name: getValue('Name'),
           address: getValue('Address'),
-          phone: getValue('Phone'),
+          phone: formattedPhone,
           lat: latStr ? parseFloat(latStr) : 0,
           lng: lngStr ? parseFloat(lngStr) : 0,
           type: getValue('Type').toLowerCase(),

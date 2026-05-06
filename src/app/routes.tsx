@@ -4,6 +4,7 @@ import { ProtectedRoute } from './components/ProtectedRoute';
 import { Login } from './pages/Login';
 import { Dashboard } from './pages/Dashboard';
 import { PGManagement } from './pages/PGManagement';
+import { PGOnboarding } from './pages/PGOnboarding';
 import { Tenants } from './pages/Tenants';
 import { Bookings } from './pages/Bookings';
 import { Payments } from './pages/Payments';
@@ -36,6 +37,7 @@ export const router = createBrowserRouter([
     children: [
       { index: true, Component: Dashboard },
       { path: 'pg-management', Component: PGManagement },
+      { path: 'pg-onboarding', Component: PGOnboarding },
       { path: 'pg-csv-upload', Component: PGCSVUpload },
       { path: 'pg-owner-verification', Component: PGOwnerVerification },
       { path: 'pg-owner-verification/:id', Component: PGOwnerDetail },

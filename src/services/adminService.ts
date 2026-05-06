@@ -153,6 +153,11 @@ export const adminService = {
     return await put<ApiResponse<any>>(`/admin/pg-owners/${id}/verify`, data);
   },
 
+  // Send onboarding message to unverified PGs
+  sendOnboardingMessage: async (pgIds: string[]): Promise<ApiResponse<any>> => {
+    return await post<ApiResponse<any>>('/admin/pg/send-onboarding', { pgIds });
+  },
+
   // Reports
   getReports: async (params?: { type?: string; startDate?: string; endDate?: string }): Promise<ApiResponse<any>> => {
     return await get<ApiResponse<any>>('/admin/reports', { params });
