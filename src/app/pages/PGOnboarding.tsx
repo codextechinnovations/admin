@@ -5,6 +5,11 @@ import { PageHeader } from '../components/PageHeader';
 import { adminService } from '../../services/adminService';
 import { PG } from '../../types/api';
 
+const getOwnerInfo = (ownerId: PG['ownerId']) => {
+  if (typeof ownerId === 'string') return { name: '-', phone: '-' };
+  return { name: ownerId?.name || '-', phone: ownerId?.phone || '-' };
+};
+
 export function PGOnboarding() {
   const [pgs, setPGs] = useState<PG[]>([]);
   const [loading, setLoading] = useState(true);
@@ -39,7 +44,7 @@ export function PGOnboarding() {
         const total = response.total || response.pagination?.total || 0;
         setTotalPages(Math.ceil(total / limit) || 1);
         
-        const uniqueCities = [...new Set((response.data || []).map((pg: any) => pg.city).filter(Boolean))];
+        const uniqueCities = [...new Set((response.data || []).map((pg: any) => pg.city).filter(Boolean))] as string[];
         setCities(prev => {
           const allCities = [...prev, ...uniqueCities];
           return [...new Set(allCities)];
@@ -111,7 +116,7 @@ export function PGOnboarding() {
       return (
         pg.name?.toLowerCase().includes(search) ||
         pg.city?.toLowerCase().includes(search) ||
-        pg.ownerId?.name?.toLowerCase().includes(search)
+        getOwnerInfo(pg.ownerId).name.toLowerCase().includes(search)
       );
     }
     return true;
@@ -234,8 +239,8 @@ export function PGOnboarding() {
                         <div className="text-xs text-muted-foreground">{pg.address}</div>
                       </td>
                       <td className="p-4">
-                        <div className="text-sm">{pg.ownerId?.name || '-'}</div>
-                        <div className="text-xs text-muted-foreground">{pg.ownerId?.phone || '-'}</div>
+                        <div className="text-sm">{getOwnerInfo(pg.ownerId).name}</div>
+                        <div className="text-xs text-muted-foreground">{getOwnerInfo(pg.ownerId).phone}</div>
                       </td>
                       <td className="p-4">
                         <div className="flex items-center gap-2">

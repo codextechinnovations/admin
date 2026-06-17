@@ -19,7 +19,9 @@ import {
   CreditCard as IdCard,
   Upload,
   UserCheck,
-  Send
+  Send,
+  Smartphone,
+  DoorOpen
 } from 'lucide-react';
 
 interface NavItem {
@@ -33,6 +35,7 @@ const navItems: NavItem[] = [
   { name: 'PG Management', path: '/pg-management', icon: Building2 },
   { name: 'PG Onboarding', path: '/pg-onboarding', icon: Send },
   { name: 'PG CSV Upload', path: '/pg-csv-upload', icon: Upload },
+  { name: 'Bulk Add Rooms', path: '/bulk-add-rooms', icon: DoorOpen },
   { name: 'PG Owner Verify', path: '/pg-owner-verification', icon: UserCheck },
   { name: 'Tenants', path: '/tenants', icon: Users },
   { name: 'Bookings', path: '/bookings', icon: Calendar },
@@ -43,6 +46,7 @@ const navItems: NavItem[] = [
   { name: 'Admin Roles', path: '/roles', icon: Shield },
   { name: 'Reports', path: '/reports', icon: BarChart3 },
   { name: 'ID Cards', path: '/id-card-generator', icon: IdCard },
+  { name: 'App Version', path: '/app-version', icon: Smartphone },
   { name: 'Settings', path: '/settings', icon: Settings }
 ];
 

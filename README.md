@@ -239,3 +239,19 @@ For issues or questions, contact: support@codextech.com
 ---
 
 **Note**: This is an internal admin panel for ManageMyPG operations team only. Not for PG owners or tenants.
+
+## Production Status
+
+- All primary modules are wired to the backend API (`/api/admin/*`).
+- TypeScript type checking is enabled (`npm run typecheck`).
+- Push notifications are fully functional end-to-end via Expo.
+- Pages without backend support (AI Automation, Content, Settings) show clear "Coming Soon" placeholders instead of mock data.
+
+## Scripts
+
+```bash
+npm install
+npm run dev      # Start dev server
+npm run build    # Production build (includes type check)
+npm run typecheck # TypeScript check only
+```

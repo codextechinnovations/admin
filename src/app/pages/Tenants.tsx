@@ -169,7 +169,7 @@ export function Tenants() {
       });
       if (response.success) {
         setShowAddModal(false);
-        setNewTenant({ name: '', phone: '', email: '', pgId: '', roomNumber: '', monthlyRent: 0, securityDeposit: 0, aadhaarNumber: '' });
+        setNewTenant({ name: '', phone: '', email: '', pgId: '', roomNumber: '', monthlyRent: 0, securityDeposit: 0, aadhaarNumber: '', userPhoto: '', aadharCardPhoto: '' });
         fetchTenants();
       }
     } catch (err) {

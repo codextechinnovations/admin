@@ -42,8 +42,8 @@ export function Reports() {
   const totalPGs = stats?.pgStats?.reduce((sum: number, s: any) => sum + s.count, 0) || 0;
   const totalTenants = stats?.tenantStats?.reduce((sum: number, s: any) => sum + s.count, 0) || 0;
 
-  const growthRate = monthlyData.length > 1 
-    ? (((monthlyData[monthlyData.length - 1]?.revenue || 0) - (monthlyData[0]?.revenue || 0)) / (monthlyData[0]?.revenue || 1) * 100).toFixed(1)
+  const growthRate = monthlyData.length > 1
+    ? Number(((((monthlyData[monthlyData.length - 1]?.revenue || 0) - (monthlyData[0]?.revenue || 0)) / (monthlyData[0]?.revenue || 1) * 100).toFixed(1)))
     : 0;
 
   if (loading) {

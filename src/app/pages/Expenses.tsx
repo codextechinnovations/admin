@@ -13,7 +13,8 @@ interface Expense {
   category: string;
   expense_date: string;
   note?: string;
-  pgId?: { name: string };
+  pgId?: string;
+  pg_id?: string;
   createdAt: string;
 }
 
@@ -319,9 +320,12 @@ export function Expenses() {
               <div className="flex justify-between py-2 border-b border-border/50">
                 <span className="text-muted-foreground">PG</span>
                 <span className="font-medium">
-                  {typeof selectedExpense.pgId === 'string'
-                    ? pgs.find((pg) => pg._id === selectedExpense.pgId)?.name || selectedExpense.pgId.slice(-6)
-                    : selectedExpense.pgId?.name || '-'}
+                  {(() => {
+                    const pgRef = selectedExpense.pgId || selectedExpense.pg_id;
+                    if (!pgRef) return '-';
+                    const matched = pgs.find((pg) => pg._id === pgRef);
+                    return matched?.name || (typeof pgRef === 'string' ? pgRef.slice(-6) : '-');
+                  })()}
                 </span>
               </div>
               <div className="flex justify-between py-2">

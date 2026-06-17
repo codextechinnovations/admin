@@ -19,8 +19,10 @@ import { Settings } from './pages/Settings';
 import { NotFound } from './pages/NotFound';
 import { IdCardGenerator } from './pages/IdCardGenerator';
 import { PGCSVUpload } from './pages/PGCSVUpload';
+import { BulkAddRooms } from './pages/BulkAddRooms';
 import { PGOwnerVerification } from './pages/PGOwnerVerification';
 import { PGOwnerDetail } from './pages/PGOwnerDetail';
+import { AppVersionSettings } from './pages/AppVersionSettings';
 
 export const router = createBrowserRouter([
   {
@@ -39,6 +41,7 @@ export const router = createBrowserRouter([
       { path: 'pg-management', Component: PGManagement },
       { path: 'pg-onboarding', Component: PGOnboarding },
       { path: 'pg-csv-upload', Component: PGCSVUpload },
+      { path: 'bulk-add-rooms', Component: BulkAddRooms },
       { path: 'pg-owner-verification', Component: PGOwnerVerification },
       { path: 'pg-owner-verification/:id', Component: PGOwnerDetail },
       { path: 'tenants', Component: Tenants },
@@ -52,6 +55,7 @@ export const router = createBrowserRouter([
       { path: 'roles', Component: Roles },
       { path: 'reports', Component: Reports },
       { path: 'settings', Component: Settings },
+      { path: 'app-version', Component: AppVersionSettings },
       { path: 'id-card-generator', Component: IdCardGenerator }
     ]
   },

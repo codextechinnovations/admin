@@ -15,9 +15,10 @@ interface DataTableProps {
   searchable?: boolean;
   filterable?: boolean;
   itemsPerPage?: number;
+  loading?: boolean;
 }
 
-export function DataTable({ columns, data, searchable = true, filterable = false, itemsPerPage = 10 }: DataTableProps) {
+export function DataTable({ columns, data, searchable = true, filterable = false, itemsPerPage = 10, loading = false }: DataTableProps) {
   const [currentPage, setCurrentPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState('');
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null);
@@ -102,7 +103,16 @@ export function DataTable({ columns, data, searchable = true, filterable = false
             </tr>
           </thead>
           <tbody>
-            {paginatedData.length > 0 ? (
+            {loading ? (
+              <tr>
+                <td colSpan={columns.length} className="px-6 py-12 text-center text-muted-foreground">
+                  <div className="flex items-center justify-center gap-2">
+                    <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                    Loading...
+                  </div>
+                </td>
+              </tr>
+            ) : paginatedData.length > 0 ? (
               paginatedData.map((row, rowIndex) => (
                 <motion.tr
                   key={rowIndex}

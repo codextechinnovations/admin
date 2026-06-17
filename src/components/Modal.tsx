@@ -73,12 +73,16 @@ export function Modal({ isOpen, onClose, title, children, size = 'md' }: ModalPr
 interface FormFieldProps {
   label: string;
   children: React.ReactNode;
+  required?: boolean;
 }
 
-export function FormField({ label, children }: FormFieldProps) {
+export function FormField({ label, children, required }: FormFieldProps) {
   return (
     <div className="mb-4">
-      <label className="block text-sm font-medium text-muted-foreground mb-1.5">{label}</label>
+      <label className="block text-sm font-medium text-muted-foreground mb-1.5">
+        {label}
+        {required && <span className="text-red-500 ml-1">*</span>}
+      </label>
       {children}
     </div>
   );

@@ -372,7 +372,7 @@ export function IdCardGenerator() {
                     </div>
                     <div className="back-info-item">
                       <div className="back-info-label">Alt. Contact</div>
-                      <div className="back-info-value">{tenant.alt_phone || '—'}</div>
+                      <div className="back-info-value">{tenant.altPhone || '—'}</div>
                     </div>
                     <div className="back-info-item">
                       <div className="back-info-label">Email</div>

@@ -2,6 +2,11 @@ export interface ApiResponse<T> {
   success: boolean;
   data: T;
   message?: string;
+  total?: number;
+  results?: any[];
+  totalCreated?: number;
+  totalErrors?: number;
+  errors?: { index: number; error: string }[];
   pagination?: {
     total: number;
     page: number;
@@ -12,7 +17,7 @@ export interface ApiResponse<T> {
 
 export interface PG {
   _id: string;
-  ownerId: string;
+  ownerId: string | { _id: string; name?: string; phone?: string; email?: string };
   name: string;
   type: 'male' | 'female' | 'colive';
   totalRooms: number;
@@ -23,7 +28,7 @@ export interface PG {
   area?: string;
   price?: number;
   rating?: number;
-  images?: string[];
+  images?: string[] | { url: string; category?: string }[];
   isVerified: boolean;
   isAvailable: boolean;
   phone?: string;
@@ -78,12 +83,17 @@ export interface Payment {
   ownerId: string;
   tenantId: string;
   pgId?: string;
+  pg_id?: string;
+  tenant_id?: string;
+  owner_id?: string;
   amount: number;
-  type: 'CREDIT' | 'DEBIT';
+  type: 'CREDIT' | 'DEBIT' | string;
   category?: string;
-  month: number;
-  year: number;
-  paymentDate: string;
+  month?: number;
+  year?: number;
+  paymentDate?: string;
+  payment_date?: string;
+  due_date?: string;
   status: string;
   note?: string;
   createdAt: string;

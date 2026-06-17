@@ -8,7 +8,7 @@ export const adminService = {
   },
 
   // PG Management
-  getPGs: async (params?: { page?: number; limit?: number; search?: string; ownerId?: string; type?: string }): Promise<ApiResponse<any>> => {
+  getPGs: async (params?: { page?: number; limit?: number; search?: string; ownerId?: string; type?: string; status?: string; verification?: string }): Promise<ApiResponse<any>> => {
     return await get<ApiResponse<any>>('/admin/pg', { params });
   },
   getPGById: async (id: string): Promise<ApiResponse<any>> => {
@@ -149,13 +149,54 @@ export const adminService = {
   getPGOwnerPGs: async (id: string): Promise<ApiResponse<any>> => {
     return await get<ApiResponse<any>>(`/admin/pg-owners/${id}/pgs`);
   },
-  verifyPGOwner: async (id: string, data: { status: string; isVerified: boolean }): Promise<ApiResponse<any>> => {
+  verifyPGOwner: async (id: string, data: {
+    status: string;
+    isVerified: boolean;
+    plan?: string;
+    subscriptionStartDate?: string;
+    subscriptionEndDate?: string;
+    paymentMethod?: string;
+    transactionId?: string;
+  }): Promise<ApiResponse<any>> => {
     return await put<ApiResponse<any>>(`/admin/pg-owners/${id}/verify`, data);
+  },
+  subscribePGOwner: async (id: string, data: {
+    plan: string;
+    subscriptionStartDate?: string;
+    subscriptionEndDate: string;
+    paymentMethod?: string;
+    transactionId?: string;
+  }): Promise<ApiResponse<any>> => {
+    return await put<ApiResponse<any>>(`/admin/pg-owners/${id}/subscribe`, data);
+  },
+  freezePGOwner: async (id: string): Promise<ApiResponse<any>> => {
+    return await put<ApiResponse<any>>(`/admin/pg-owners/${id}/freeze`, {});
+  },
+
+  // App Version Management
+  getAppVersions: async (): Promise<ApiResponse<any>> => {
+    return await get<ApiResponse<any>>('/app/admin/versions');
+  },
+  updateAppVersion: async (data: {
+    platform: 'android' | 'ios';
+    versionName: string;
+    versionCode: number;
+    forceUpdate?: boolean;
+    updateUrl?: string;
+    releaseNotes?: string;
+    isActive?: boolean;
+  }): Promise<ApiResponse<any>> => {
+    return await put<ApiResponse<any>>('/app/admin/version', data);
   },
 
   // Send onboarding message to unverified PGs
   sendOnboardingMessage: async (pgIds: string[]): Promise<ApiResponse<any>> => {
     return await post<ApiResponse<any>>('/admin/pg/send-onboarding', { pgIds });
+  },
+
+  // Room Management
+  bulkAddRooms: async (pgId: string, ownerId: string, rooms: any[]): Promise<ApiResponse<any>> => {
+    return await post<ApiResponse<any>>('/admin/rooms/bulk-add', { pgId, ownerId, rooms });
   },
 
   // Reports
@@ -169,7 +210,7 @@ export const adminService = {
     return await get<ApiResponse<any>>('/admin/reports/pg-performance', { params: { limit } });
   },
   exportReport: (type: string) => {
-    const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+    const baseUrl = import.meta.env.VITE_API_BASE_URL || 'https://api.manageyourpg.com/api';
     return `${baseUrl}/admin/reports/export?type=${type}`;
   }
 };

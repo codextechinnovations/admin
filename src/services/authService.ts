@@ -1,5 +1,4 @@
-import { post, get } from './apiClient';
-import { ApiResponse } from '../types/api';
+import { post } from './apiClient';
 
 interface AdminUser {
   id: string;
@@ -15,6 +14,7 @@ interface LoginResponse {
   accessToken: string;
   refreshToken: string;
   user: AdminUser;
+  message?: string;
 }
 
 export const authService = {
