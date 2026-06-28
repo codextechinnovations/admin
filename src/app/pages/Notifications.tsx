@@ -84,7 +84,9 @@ export function Notifications() {
       setLoadingCounts(true);
       const response = await notificationService.getRecipientCounts();
       if (response.success) {
-        setRecipientCounts(response.data);
+        // Cast through unknown — the backend may omit some fields; treat
+        // any partial object as the full shape so setState accepts it.
+        setRecipientCounts(response.data as unknown as RecipientCounts);
       }
     } catch (err: any) {
       showToast(
