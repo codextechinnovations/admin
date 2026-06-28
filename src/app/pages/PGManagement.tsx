@@ -1,23 +1,26 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Plus, MapPin, Users, CheckCircle, Clock, Eye, Trash2, Shield, Home, Building2 } from 'lucide-react';
+import { useNavigate } from 'react-router';
+import {
+  Plus, MapPin, Users, CheckCircle, Clock, Trash2, Shield, Home, Building2,
+  Snowflake, ExternalLink
+} from 'lucide-react';
 import { PageHeader } from '../components/PageHeader';
 import { DataTable } from '../components/DataTable';
 import { Modal, FormField, Badge } from '../../components/Modal';
+import { useToast } from '../components/Toast';
 import { adminService } from '../../services/adminService';
 import { PG } from '../../types/api';
 
 export function PGManagement() {
+  const { showToast } = useToast();
+  const navigate = useNavigate();
   const [pgs, setPGs] = useState<PG[]>([]);
   const [owners, setOwners] = useState<{_id: string; name: string}[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
-  const [selectedPG, setSelectedPG] = useState<PG | null>(null);
-  const [showDetailModal, setShowDetailModal] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
-  const [pgDetails, setPgDetails] = useState<any>(null);
-  const [detailLoading, setDetailLoading] = useState(false);
   const [ownerFilter, setOwnerFilter] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
 
@@ -69,41 +72,34 @@ export function PGManagement() {
     }
   };
 
-  const fetchPGDetails = async (id: string) => {
-    try {
-      setDetailLoading(true);
-      const response = await adminService.getPGById(id);
-      if (response.success) {
-        setPgDetails(response.data);
-        setShowDetailModal(true);
-      }
-    } catch (err) {
-      console.error('Error fetching PG details:', err);
-    } finally {
-      setDetailLoading(false);
-    }
-  };
-
-  const handleViewDetails = (pg: PG) => {
-    setSelectedPG(pg);
-    fetchPGDetails(pg._id);
-  };
-
   const handleVerify = async (pgId: string, isVerified: boolean) => {
+    const pg = pgs.find(p => p._id === pgId);
+    if (pg?.isFrozen) {
+      showToast('error', 'This PG is frozen. Unfreeze it before changing verification.');
+      return;
+    }
     try {
       await adminService.verifyPG(pgId, { isVerified });
+      showToast('success', `PG ${isVerified ? 'verified' : 'unverified'}`);
       fetchPGs();
     } catch (err) {
       console.error('Error verifying PG:', err);
+      showToast('error', 'Failed to update verification');
     }
   };
 
   const handleDelete = async (pgId: string) => {
+    const pg = pgs.find(p => p._id === pgId);
+    if (pg?.isFrozen) {
+      showToast('error', 'Unfreeze this PG before deleting');
+      return;
+    }
     if (!confirm('Are you sure you want to delete this PG?')) return;
     try {
       setDeleteError(null);
       const response = await adminService.deletePG(pgId);
       if (response.success) {
+        showToast('success', 'PG deleted');
         fetchPGs();
       } else {
         setDeleteError(response.message || 'Failed to delete PG');
@@ -121,20 +117,35 @@ export function PGManagement() {
       if (response.success) {
         setShowAddModal(false);
         setNewPG({ name: '', type: 'male', ownerId: '', address: '', city: '', state: '', pincode: '', totalRooms: 0, longTermRent: 0, shortTermRent: 0, amenities: [], description: '' });
+        showToast('success', 'PG created successfully');
         fetchPGs();
         fetchOwners();
       }
     } catch (err) {
       console.error('Error adding PG:', err);
+      showToast('error', 'Failed to create PG');
     }
   };
 
   const columns = [
-    { key: 'name', label: 'PG Name', sortable: true },
-    { 
-      key: 'ownerId', 
-      label: 'Owner', 
-      render: (v: any) => v?.name || '-' 
+    {
+      key: 'name',
+      label: 'PG Name',
+      sortable: true,
+      render: (v: string, row: PG) => (
+        <button
+          onClick={() => navigate(`/pg-management/${row._id}`)}
+          className="font-medium text-primary hover:underline flex items-center gap-1 text-left"
+        >
+          {v}
+          <ExternalLink className="w-3 h-3 opacity-60" />
+        </button>
+      )
+    },
+    {
+      key: 'ownerId',
+      label: 'Owner',
+      render: (v: any) => v?.name || '-'
     },
     { key: 'type', label: 'Type', sortable: true, render: (v: string) => <Badge variant="info">{v}</Badge> },
     {
@@ -148,11 +159,17 @@ export function PGManagement() {
       )
     },
     { key: 'totalRooms', label: 'Rooms', sortable: true, render: (v: number) => <span>{v || 0}</span> },
-    
     {
       key: 'isVerified',
       label: 'Verified',
       render: (v: boolean) => v ? <Badge variant="success"><CheckCircle className="w-3 h-3 mr-1" /> Yes</Badge> : <Badge variant="warning"><Clock className="w-3 h-3 mr-1" /> Pending</Badge>
+    },
+    {
+      key: 'isFrozen',
+      label: 'Freeze',
+      render: (v: boolean) => v
+        ? <Badge variant="info"><Snowflake className="w-3 h-3 mr-1" /> Frozen</Badge>
+        : <Badge variant="default">Active</Badge>
     },
     {
       key: 'status',
@@ -164,14 +181,28 @@ export function PGManagement() {
       label: 'Actions',
       render: (_: any, row: PG) => (
         <div className="flex items-center gap-1">
-          <button onClick={() => handleViewDetails(row)} className="p-2 hover:bg-accent rounded-lg transition-colors" title="View Details">
-            <Eye className="w-4 h-4" />
+          <button
+            onClick={() => navigate(`/pg-management/${row._id}`)}
+            className="p-2 hover:bg-accent rounded-lg transition-colors text-primary"
+            title="Open Detail"
+          >
+            <ExternalLink className="w-4 h-4" />
           </button>
-          <button onClick={() => handleVerify(row._id, !row.isVerified)} className="p-2 hover:bg-accent rounded-lg transition-colors" title={row.isVerified ? 'Unverify' : 'Verify'}>
+          <button
+            onClick={() => handleVerify(row._id, !row.isVerified)}
+            disabled={row.isFrozen}
+            className="p-2 hover:bg-accent rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            title={row.isFrozen ? 'PG is frozen' : (row.isVerified ? 'Unverify' : 'Verify')}
+          >
             <Shield className={`w-4 h-4 ${row.isVerified ? 'text-green-500' : 'text-yellow-500'}`} />
           </button>
           {row.status !== 'deleted' && (
-            <button onClick={() => handleDelete(row._id)} className="p-2 hover:bg-accent rounded-lg transition-colors text-red-500" title="Delete">
+            <button
+              onClick={() => handleDelete(row._id)}
+              disabled={row.isFrozen}
+              className="p-2 hover:bg-accent rounded-lg transition-colors text-red-500 disabled:opacity-40 disabled:cursor-not-allowed"
+              title={row.isFrozen ? 'PG is frozen' : 'Delete'}
+            >
               <Trash2 className="w-4 h-4" />
             </button>
           )}
@@ -182,9 +213,10 @@ export function PGManagement() {
 
   const activePGs = pgs.filter(pg => pg.isAvailable);
   const verifiedPGs = pgs.filter(pg => pg.isVerified);
+  const frozenPGs = pgs.filter(pg => pg.isFrozen);
   const totalRooms = pgs.reduce((sum, pg) => sum + (pg.totalRooms || 0), 0);
 
-   return (
+  return (
     <div>
       {deleteError && (
         <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-500 text-sm flex justify-between items-center">
@@ -194,7 +226,7 @@ export function PGManagement() {
       )}
       <PageHeader
         title="PG Management"
-        description="Manage all PGs on the platform. Assign owners and verify listings."
+        description="Manage all PGs on the platform. Click a PG name to view full details, tenants, rooms, and freeze status."
         action={
           <button onClick={() => setShowAddModal(true)} className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-[#2d2d7e] to-[#1e3a8a] text-white rounded-lg shadow-lg hover:shadow-xl transition-all">
             <Plus className="w-4 h-4" />
@@ -203,7 +235,7 @@ export function PGManagement() {
         }
       />
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-card/50 backdrop-blur-xl rounded-xl border border-border p-4">
           <div className="flex items-center gap-3">
             <div className="p-3 bg-blue-500/10 rounded-xl">
@@ -234,6 +266,17 @@ export function PGManagement() {
             <div>
               <p className="text-sm text-muted-foreground">Verified</p>
               <p className="text-2xl font-semibold text-yellow-500">{verifiedPGs.length}</p>
+            </div>
+          </div>
+        </motion.div>
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }} className="bg-card/50 backdrop-blur-xl rounded-xl border border-border p-4">
+          <div className="flex items-center gap-3">
+            <div className="p-3 bg-cyan-500/10 rounded-xl">
+              <Snowflake className="w-6 h-6 text-cyan-500" />
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Frozen</p>
+              <p className="text-2xl font-semibold text-cyan-500">{frozenPGs.length}</p>
             </div>
           </div>
         </motion.div>
@@ -276,78 +319,6 @@ export function PGManagement() {
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
         <DataTable columns={columns} data={pgs} loading={loading} />
       </motion.div>
-
-      <Modal isOpen={showDetailModal} onClose={() => setShowDetailModal(false)} title="PG Details" size="lg">
-        {detailLoading ? (
-          <div className="flex items-center justify-center py-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-          </div>
-        ) : pgDetails ? (
-          <div className="space-y-4">
-            <div className="flex items-center gap-4">
-              <div className="p-3 bg-primary/10 rounded-xl">
-                <Home className="w-6 h-6 text-primary" />
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold">{pgDetails.name}</h3>
-                <p className="text-sm text-muted-foreground">{pgDetails.address}, {pgDetails.city}</p>
-              </div>
-            </div>
-
-            {pgDetails.ownerId && (
-              <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3">
-                <p className="text-xs text-blue-500 font-medium mb-1">Owner</p>
-                <p className="font-medium">{pgDetails.ownerId.name}</p>
-              </div>
-            )}
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="bg-muted/30 rounded-lg p-3">
-                <p className="text-xs text-muted-foreground">Type</p>
-                <p className="font-medium capitalize">{pgDetails.type}</p>
-              </div>
-              <div className="bg-muted/30 rounded-lg p-3">
-                <p className="text-xs text-muted-foreground">Total Rooms</p>
-                <p className="font-medium">{pgDetails.totalRooms}</p>
-              </div>
-              <div className="bg-muted/30 rounded-lg p-3">
-                <p className="text-xs text-muted-foreground">Long Term Rent</p>
-                <p className="font-medium">₹{pgDetails.longTermRent?.toLocaleString() || 0}/mo</p>
-              </div>
-              <div className="bg-muted/30 rounded-lg p-3">
-                <p className="text-xs text-muted-foreground">Short Term Rent</p>
-                <p className="font-medium">₹{pgDetails.shortTermRent?.toLocaleString() || 0}/day</p>
-              </div>
-              <div className="bg-muted/30 rounded-lg p-3">
-                <p className="text-xs text-muted-foreground">Status</p>
-                <Badge variant={pgDetails.isAvailable ? 'success' : 'danger'}>
-                  {pgDetails.isAvailable ? 'Active' : 'Inactive'}
-                </Badge>
-              </div>
-              <div className="bg-muted/30 rounded-lg p-3">
-                <p className="text-xs text-muted-foreground">Verified</p>
-                <Badge variant={pgDetails.isVerified ? 'success' : 'warning'}>
-                  {pgDetails.isVerified ? 'Yes' : 'Pending'}
-                </Badge>
-              </div>
-            </div>
-
-            {pgDetails.rooms && pgDetails.rooms.length > 0 && (
-              <div>
-                <p className="text-sm font-medium mb-2">Rooms ({pgDetails.rooms.length})</p>
-                <div className="space-y-2 max-h-40 overflow-y-auto">
-                  {pgDetails.rooms.map((room: any) => (
-                    <div key={room._id} className="flex justify-between items-center p-2 bg-muted/30 rounded-lg">
-                      <span>Room {room.roomNumber}</span>
-                      <Badge variant={room.status === 'available' ? 'success' : 'warning'}>{room.status}</Badge>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        ) : null}
-      </Modal>
 
       <Modal isOpen={showAddModal} onClose={() => setShowAddModal(false)} title="Add New PG" size="lg">
         <form onSubmit={handleAddPG}>

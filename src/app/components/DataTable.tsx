@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { ChevronLeft, ChevronRight, Search, Filter } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { ChevronLeft, ChevronRight, Search, Filter, Check } from 'lucide-react';
 import { motion } from 'motion/react';
 
 interface Column {
@@ -16,9 +16,24 @@ interface DataTableProps {
   filterable?: boolean;
   itemsPerPage?: number;
   loading?: boolean;
+  rowKey?: string;
+  selectable?: boolean;
+  selectedIds?: string[];
+  onSelectionChange?: (ids: string[]) => void;
 }
 
-export function DataTable({ columns, data, searchable = true, filterable = false, itemsPerPage = 10, loading = false }: DataTableProps) {
+export function DataTable({
+  columns,
+  data,
+  searchable = true,
+  filterable = false,
+  itemsPerPage = 10,
+  loading = false,
+  rowKey = '_id',
+  selectable = false,
+  selectedIds = [],
+  onSelectionChange
+}: DataTableProps) {
   const [currentPage, setCurrentPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState('');
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null);
@@ -53,6 +68,42 @@ export function DataTable({ columns, data, searchable = true, filterable = false
     });
   };
 
+  // Prune selectedIds when the underlying data no longer contains them
+  // (e.g. after a bulk delete or page change that drops records from view).
+  useEffect(() => {
+    if (!selectable || !onSelectionChange || selectedIds.length === 0) return;
+    const validIds = new Set(data.map((r) => r[rowKey]));
+    const stillValid = selectedIds.filter((id) => validIds.has(id));
+    if (stillValid.length !== selectedIds.length) {
+      onSelectionChange(stillValid);
+    }
+  }, [data, rowKey, selectable]);
+
+  const isRowSelected = (id: string) => selectedIds.includes(id);
+  const pageIds = paginatedData.map((r) => r[rowKey]);
+  const allOnPageSelected = pageIds.length > 0 && pageIds.every((id) => selectedIds.includes(id));
+  const someOnPageSelected = pageIds.some((id) => selectedIds.includes(id)) && !allOnPageSelected;
+
+  const toggleRow = (id: string) => {
+    if (!onSelectionChange) return;
+    if (isRowSelected(id)) {
+      onSelectionChange(selectedIds.filter((x) => x !== id));
+    } else {
+      onSelectionChange([...selectedIds, id]);
+    }
+  };
+
+  const togglePage = () => {
+    if (!onSelectionChange) return;
+    if (allOnPageSelected) {
+      onSelectionChange(selectedIds.filter((id) => !pageIds.includes(id)));
+    } else {
+      const merged = new Set(selectedIds);
+      pageIds.forEach((id) => merged.add(id));
+      onSelectionChange(Array.from(merged));
+    }
+  };
+
   return (
     <div className="bg-card/50 backdrop-blur-xl rounded-xl border border-border overflow-hidden">
       {/* Header */}
@@ -84,6 +135,25 @@ export function DataTable({ columns, data, searchable = true, filterable = false
         <table className="w-full">
           <thead>
             <tr className="border-b border-border bg-muted/30">
+              {selectable && (
+                <th className="px-4 py-4 w-10">
+                  <button
+                    type="button"
+                    onClick={togglePage}
+                    disabled={pageIds.length === 0}
+                    className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${
+                      allOnPageSelected
+                        ? 'bg-primary border-primary text-primary-foreground'
+                        : someOnPageSelected
+                        ? 'bg-primary/40 border-primary text-primary-foreground'
+                        : 'border-border hover:border-primary'
+                    } disabled:opacity-40`}
+                    title={allOnPageSelected ? 'Deselect page' : 'Select page'}
+                  >
+                    {(allOnPageSelected || someOnPageSelected) && <Check className="w-3.5 h-3.5" />}
+                  </button>
+                </th>
+              )}
               {columns.map((column) => (
                 <th
                   key={column.key}
@@ -105,7 +175,7 @@ export function DataTable({ columns, data, searchable = true, filterable = false
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={columns.length} className="px-6 py-12 text-center text-muted-foreground">
+                <td colSpan={columns.length + (selectable ? 1 : 0)} className="px-6 py-12 text-center text-muted-foreground">
                   <div className="flex items-center justify-center gap-2">
                     <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
                     Loading...
@@ -113,24 +183,46 @@ export function DataTable({ columns, data, searchable = true, filterable = false
                 </td>
               </tr>
             ) : paginatedData.length > 0 ? (
-              paginatedData.map((row, rowIndex) => (
-                <motion.tr
-                  key={rowIndex}
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: rowIndex * 0.05 }}
-                  className="border-b border-border hover:bg-accent/30 transition-colors"
-                >
-                  {columns.map((column) => (
-                    <td key={column.key} className="px-6 py-4 text-sm">
-                      {column.render ? column.render(row[column.key], row) : row[column.key]}
-                    </td>
-                  ))}
-                </motion.tr>
-              ))
+              paginatedData.map((row, rowIndex) => {
+                const id = row[rowKey];
+                const selected = isRowSelected(id);
+                return (
+                  <motion.tr
+                    key={id || rowIndex}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: rowIndex * 0.05 }}
+                    className={`border-b border-border transition-colors ${
+                      selected ? 'bg-primary/10 hover:bg-primary/15' : 'hover:bg-accent/30'
+                    }`}
+                  >
+                    {selectable && (
+                      <td className="px-4 py-4 w-10">
+                        <button
+                          type="button"
+                          onClick={() => toggleRow(id)}
+                          className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${
+                            selected
+                              ? 'bg-primary border-primary text-primary-foreground'
+                              : 'border-border hover:border-primary'
+                          }`}
+                          title={selected ? 'Deselect' : 'Select'}
+                        >
+                          {selected && <Check className="w-3.5 h-3.5" />}
+                        </button>
+                      </td>
+                    )}
+                    {columns.map((column) => (
+                      <td key={column.key} className="px-6 py-4 text-sm">
+                        {column.render ? column.render(row[column.key], row) : row[column.key]}
+                      </td>
+                    ))}
+                  </motion.tr>
+                );
+              })
             ) : (
               <tr>
-                <td colSpan={columns.length} className="px-6 py-12 text-center text-muted-foreground">
+                <td colSpan={columns.length + (selectable ? 1 : 0)} className="px-6 py-12 text-center text-muted-foreground">
                   No data found
                 </td>
               </tr>

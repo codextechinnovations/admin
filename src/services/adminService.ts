@@ -26,6 +26,33 @@ export const adminService = {
   deletePG: async (id: string): Promise<ApiResponse<any>> => {
     return await del<ApiResponse<any>>(`/admin/pg/${id}`);
   },
+  freezePG: async (id: string, data: { freeze: boolean; reason?: string }): Promise<ApiResponse<any>> => {
+    return await put<ApiResponse<any>>(`/admin/pg/${id}/freeze`, data);
+  },
+  getPGTenants: async (pgId: string): Promise<ApiResponse<any>> => {
+    try {
+      return await get<ApiResponse<any>>(`/admin/pg/${pgId}/tenants`);
+    } catch {
+      const res = await get<ApiResponse<any>>('/admin/tenants', { params: { pgId, limit: 200 } });
+      return { ...res, data: res.data || [] };
+    }
+  },
+  getPGRooms: async (pgId: string): Promise<ApiResponse<any>> => {
+    try {
+      return await get<ApiResponse<any>>(`/admin/pg/${pgId}/rooms`);
+    } catch {
+      return { success: true, data: [] };
+    }
+  },
+  addRoom: async (pgId: string, data: any): Promise<ApiResponse<any>> => {
+    return await post<ApiResponse<any>>(`/admin/pg/${pgId}/rooms`, data);
+  },
+  updateRoom: async (pgId: string, roomId: string, data: any): Promise<ApiResponse<any>> => {
+    return await put<ApiResponse<any>>(`/admin/pg/${pgId}/rooms/${roomId}`, data);
+  },
+  deleteRoom: async (pgId: string, roomId: string): Promise<ApiResponse<any>> => {
+    return await del<ApiResponse<any>>(`/admin/pg/${pgId}/rooms/${roomId}`);
+  },
 
   // Tenant Management
   getTenants: async (params?: { page?: number; limit?: number; search?: string; status?: string; pgId?: string }): Promise<ApiResponse<any>> => {
@@ -210,7 +237,7 @@ export const adminService = {
     return await get<ApiResponse<any>>('/admin/reports/pg-performance', { params: { limit } });
   },
   exportReport: (type: string) => {
-    const baseUrl = import.meta.env.VITE_API_BASE_URL || 'https://api.manageyourpg.com/api';
+    const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
     return `${baseUrl}/admin/reports/export?type=${type}`;
   }
 };

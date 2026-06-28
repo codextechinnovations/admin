@@ -31,6 +31,9 @@ export interface PG {
   images?: string[] | { url: string; category?: string }[];
   isVerified: boolean;
   isAvailable: boolean;
+  isFrozen?: boolean;
+  freezeReason?: string;
+  frozenAt?: string;
   phone?: string;
   description?: string;
   amenities?: string[];
@@ -39,11 +42,37 @@ export interface PG {
   status : string;
 }
 
+export interface PGRoom {
+  _id: string;
+  pgId: string;
+  roomNumber: string;
+  type?: 'single' | 'double' | 'triple' | 'four' | string;
+  floor?: string | number;
+  beds: number;
+  occupiedBeds?: number;
+  rentPerBed?: number;
+  deposit?: number;
+  securityDeposit?: number;
+  maintenance?: number;
+  ac?: boolean;
+  AC?: boolean;
+  attachedBathroom?: boolean;
+  attached_bathroom?: boolean;
+  balcony?: boolean;
+  furnishing?: 'unfurnished' | 'semi-furnished' | 'fully-furnished' | string;
+  amenities?: string[] | string;
+  description?: string;
+  status?: 'available' | 'occupied' | 'maintenance' | string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 export interface Tenant {
   _id: string;
   ownerId: string;
   name: string;
   phone: string;
+  alt_phone?: string;
   email?: string;
   status: 'ACTIVE' | 'NOTICE_PERIOD' | 'LEFT';
   monthlyRent: number;
@@ -56,6 +85,9 @@ export interface Tenant {
   userPhoto?: string;
   id_proof?: string;
   aadhaar?: string;
+  occupation?: string;
+  address?: string;
+  permanent_address?: string;
   createdAt: string;
   updatedAt: string;
 }

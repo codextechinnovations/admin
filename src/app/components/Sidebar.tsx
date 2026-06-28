@@ -21,7 +21,8 @@ import {
   UserCheck,
   Send,
   Smartphone,
-  DoorOpen
+  DoorOpen,
+  Inbox
 } from 'lucide-react';
 
 interface NavItem {
@@ -37,6 +38,7 @@ const navItems: NavItem[] = [
   { name: 'PG CSV Upload', path: '/pg-csv-upload', icon: Upload },
   { name: 'Bulk Add Rooms', path: '/bulk-add-rooms', icon: DoorOpen },
   { name: 'PG Owner Verify', path: '/pg-owner-verification', icon: UserCheck },
+  { name: 'Enquiries', path: '/enquiries', icon: Inbox },
   { name: 'Tenants', path: '/tenants', icon: Users },
   { name: 'Bookings', path: '/bookings', icon: Calendar },
   { name: 'Payments', path: '/payments', icon: CreditCard },

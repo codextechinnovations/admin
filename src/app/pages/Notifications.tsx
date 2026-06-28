@@ -1,9 +1,17 @@
-import { useState, useEffect } from 'react';
-import { motion } from 'motion/react';
-import { Send, Users, Bell, Smartphone, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
-import { PageHeader } from '../components/PageHeader';
-import { notificationService } from '../../services/notificationService';
-import { useToast } from '../components/Toast';
+import { useState, useEffect } from "react";
+import { motion } from "motion/react";
+import {
+  Send,
+  Users,
+  Bell,
+  Smartphone,
+  Loader2,
+  AlertCircle,
+  CheckCircle2,
+} from "lucide-react";
+import { PageHeader } from "../components/PageHeader";
+import { notificationService } from "../../services/notificationService";
+import { useToast } from "../components/Toast";
 
 interface Notification {
   _id: string;
@@ -19,24 +27,33 @@ interface RecipientCounts {
   owners: number;
   tenants: number;
   active: number;
+  admins: number;
   pushTokens: number;
 }
 
 const targetOptions = [
-  { value: 'all', label: 'All Users', description: 'Owners + Tenants' },
-  { value: 'tenants', label: 'All Tenants' },
-  { value: 'owners', label: 'All PG Owners' },
-  { value: 'active', label: 'Active Tenants Only' },
+  {
+    value: "all",
+    label: "All Users",
+    description: "Owners + Tenants + Admins",
+  },
+  { value: "tenants", label: "All Tenants" },
+  { value: "owners", label: "All PG Owners" },
+  { value: "active", label: "Active Tenants Only" },
+  { value: "admins", label: "All Admins" },
 ];
 
 export function Notifications() {
   const { showToast } = useToast();
-  const [title, setTitle] = useState('');
-  const [message, setMessage] = useState('');
-  const [target, setTarget] = useState('all');
+  const [title, setTitle] = useState("");
+  const [message, setMessage] = useState("");
+  const [target, setTarget] = useState("all");
   const [sending, setSending] = useState(false);
-  const [recentNotifications, setRecentNotifications] = useState<Notification[]>([]);
-  const [recipientCounts, setRecipientCounts] = useState<RecipientCounts | null>(null);
+  const [recentNotifications, setRecentNotifications] = useState<
+    Notification[]
+  >([]);
+  const [recipientCounts, setRecipientCounts] =
+    useState<RecipientCounts | null>(null);
   const [loadingHistory, setLoadingHistory] = useState(true);
   const [loadingCounts, setLoadingCounts] = useState(true);
 
@@ -53,7 +70,10 @@ export function Notifications() {
         setRecentNotifications(response.data || []);
       }
     } catch (err: any) {
-      showToast('error', err.response?.data?.message || 'Failed to load notification history');
+      showToast(
+        "error",
+        err.response?.data?.message || "Failed to load notification history",
+      );
     } finally {
       setLoadingHistory(false);
     }
@@ -67,7 +87,10 @@ export function Notifications() {
         setRecipientCounts(response.data);
       }
     } catch (err: any) {
-      showToast('error', err.response?.data?.message || 'Failed to load recipient counts');
+      showToast(
+        "error",
+        err.response?.data?.message || "Failed to load recipient counts",
+      );
     } finally {
       setLoadingCounts(false);
     }
@@ -77,42 +100,54 @@ export function Notifications() {
     e.preventDefault();
 
     if (!title.trim() || !message.trim()) {
-      showToast('error', 'Please enter both title and message');
+      showToast("error", "Please enter both title and message");
       return;
     }
 
     try {
       setSending(true);
-      const response = await notificationService.sendNotification({ title: title.trim(), message: message.trim(), target });
+      const response = await notificationService.sendNotification({
+        title: title.trim(),
+        message: message.trim(),
+        target,
+      });
       if (response.success) {
-        setTitle('');
-        setMessage('');
+        setTitle("");
+        setMessage("");
         showToast(
-          'success',
-          `Notification sent to ${response.data?.recipients || 0} devices (${response.data?.delivered || 0} delivered)`
+          "success",
+          `Notification sent to ${response.data?.recipients || 0} devices (${response.data?.delivered || 0} delivered)`,
         );
         fetchRecentNotifications();
         fetchRecipientCounts();
       } else {
-        showToast('error', response.message || 'Failed to send notification');
+        showToast("error", response.message || "Failed to send notification");
       }
     } catch (err: any) {
-      console.error('Error sending notification:', err);
-      showToast('error', err.response?.data?.message || err.message || 'Failed to send notification');
+      console.error("Error sending notification:", err);
+      showToast(
+        "error",
+        err.response?.data?.message ||
+          err.message ||
+          "Failed to send notification",
+      );
     } finally {
       setSending(false);
     }
   };
 
-  const currentTargetLabel = targetOptions.find(o => o.value === target)?.label || 'All Users';
+  const currentTargetLabel =
+    targetOptions.find((o) => o.value === target)?.label || "All Users";
   const estimatedRecipients = recipientCounts
-    ? target === 'all'
+    ? target === "all"
       ? recipientCounts.all
-      : target === 'owners'
-      ? recipientCounts.owners
-      : target === 'tenants'
-      ? recipientCounts.tenants
-      : recipientCounts.active
+      : target === "owners"
+        ? recipientCounts.owners
+        : target === "tenants"
+          ? recipientCounts.tenants
+          : target === "admins"
+            ? recipientCounts.admins
+            : recipientCounts.active
     : 0;
 
   return (
@@ -145,7 +180,9 @@ export function Notifications() {
                 placeholder="Enter notification title"
                 className="w-full px-4 py-2 bg-input rounded-lg border border-border focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
               />
-              <p className="text-xs text-muted-foreground mt-1 text-right">{title.length}/100</p>
+              <p className="text-xs text-muted-foreground mt-1 text-right">
+                {title.length}/100
+              </p>
             </div>
 
             <div>
@@ -158,11 +195,15 @@ export function Notifications() {
                 rows={5}
                 className="w-full px-4 py-2 bg-input rounded-lg border border-border focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all resize-none"
               />
-              <p className="text-xs text-muted-foreground mt-1 text-right">{message.length}/500</p>
+              <p className="text-xs text-muted-foreground mt-1 text-right">
+                {message.length}/500
+              </p>
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-2">Target Audience</label>
+              <label className="block text-sm font-medium mb-2">
+                Target Audience
+              </label>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {targetOptions.map((option) => (
                   <button
@@ -171,13 +212,15 @@ export function Notifications() {
                     onClick={() => setTarget(option.value)}
                     className={`flex flex-col items-start p-3 rounded-lg border transition-all text-left ${
                       target === option.value
-                        ? 'border-primary bg-primary/10'
-                        : 'border-border hover:bg-accent'
+                        ? "border-primary bg-primary/10"
+                        : "border-border hover:bg-accent"
                     }`}
                   >
                     <span className="font-medium text-sm">{option.label}</span>
                     {option.description && (
-                      <span className="text-xs text-muted-foreground">{option.description}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {option.description}
+                      </span>
                     )}
                   </button>
                 ))}
@@ -187,8 +230,10 @@ export function Notifications() {
             <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/30 border border-border">
               <AlertCircle className="w-5 h-5 text-muted-foreground shrink-0" />
               <p className="text-sm text-muted-foreground">
-                This will send a push notification to <strong>{estimatedRecipients.toLocaleString()}</strong> registered
-                users in the <strong>{currentTargetLabel}</strong> group.
+                This will send a push notification to{" "}
+                <strong>{estimatedRecipients.toLocaleString()}</strong>{" "}
+                registered users in the <strong>{currentTargetLabel}</strong>{" "}
+                group.
               </p>
             </div>
 
@@ -220,7 +265,9 @@ export function Notifications() {
           className="space-y-6"
         >
           <div className="bg-card/50 backdrop-blur-xl rounded-xl border border-border p-6">
-            <h3 className="text-sm font-medium text-muted-foreground mb-4">Audience Overview</h3>
+            <h3 className="text-sm font-medium text-muted-foreground mb-4">
+              Audience Overview
+            </h3>
             <div className="space-y-4">
               <div className="flex items-center gap-4">
                 <div className="p-3 bg-gradient-to-br from-blue-600 to-blue-800 rounded-lg">
@@ -229,7 +276,11 @@ export function Notifications() {
                 <div>
                   <p className="text-sm text-muted-foreground">Total Users</p>
                   <p className="text-2xl font-semibold">
-                    {loadingCounts ? <Loader2 className="w-5 h-5 animate-spin" /> : (recipientCounts?.all || 0).toLocaleString()}
+                    {loadingCounts ? (
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                    ) : (
+                      (recipientCounts?.all || 0).toLocaleString()
+                    )}
                   </p>
                 </div>
               </div>
@@ -239,9 +290,15 @@ export function Notifications() {
                   <Smartphone className="w-6 h-6 text-white" />
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Active Push Tokens</p>
+                  <p className="text-sm text-muted-foreground">
+                    Active Push Tokens
+                  </p>
                   <p className="text-2xl font-semibold">
-                    {loadingCounts ? <Loader2 className="w-5 h-5 animate-spin" /> : (recipientCounts?.pushTokens || 0).toLocaleString()}
+                    {loadingCounts ? (
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                    ) : (
+                      (recipientCounts?.pushTokens || 0).toLocaleString()
+                    )}
                   </p>
                 </div>
               </div>
@@ -267,8 +324,12 @@ export function Notifications() {
                     <div className="flex items-start gap-3">
                       <CheckCircle2 className="w-4 h-4 text-green-500 mt-0.5 shrink-0" />
                       <div className="flex-1 min-w-0">
-                        <p className="font-medium text-sm truncate">{notif.title}</p>
-                        <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{notif.body}</p>
+                        <p className="font-medium text-sm truncate">
+                          {notif.title}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                          {notif.body}
+                        </p>
                         <div className="flex items-center justify-between mt-2">
                           <span className="text-xs text-muted-foreground">
                             {new Date(notif.createdAt).toLocaleString()}

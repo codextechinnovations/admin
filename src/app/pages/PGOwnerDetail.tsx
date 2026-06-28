@@ -1,13 +1,13 @@
-import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router';
-import { motion } from 'motion/react';
-import { 
-  ArrowLeft, 
-  UserCheck, 
-  MapPin, 
-  Phone, 
-  Mail, 
-  Building2, 
+import { useState, useEffect } from "react";
+import { useParams, useNavigate } from "react-router";
+import { motion } from "motion/react";
+import {
+  ArrowLeft,
+  UserCheck,
+  MapPin,
+  Phone,
+  Mail,
+  Building2,
   Calendar,
   CheckCircle,
   XCircle,
@@ -17,12 +17,12 @@ import {
   ChevronLeft,
   ChevronRight,
   CreditCard,
-  Snowflake
-} from 'lucide-react';
-import { PageHeader } from '../components/PageHeader';
-import { adminService } from '../../services/adminService';
-import { get, put } from '../../services/apiClient';
-import { toast } from 'sonner';
+  Snowflake,
+} from "lucide-react";
+import { PageHeader } from "../components/PageHeader";
+import { adminService } from "../../services/adminService";
+import { get, post, put } from "../../services/apiClient";
+import { toast } from "sonner";
 
 interface PGOwner {
   _id: string;
@@ -35,7 +35,7 @@ interface PGOwner {
   pincode: string;
   latitude: number;
   longitude: number;
-  status: 'pending' | 'approved' | 'rejected';
+  status: "pending" | "approved" | "rejected";
   isVerified: boolean;
   isTrial?: boolean;
   isPaid?: boolean;
@@ -62,32 +62,47 @@ interface PG {
   images?: string[] | { url: string; category?: string }[];
 }
 
+interface PGWallet {
+  _id: string;
+  pgId: string;
+  balance: number;
+  totalCredited: number;
+  totalUsed: number;
+}
+
 export function PGOwnerDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const today = new Date().toISOString().slice(0, 10);
-  const nextMonth = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  const nextMonth = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+    .toISOString()
+    .slice(0, 10);
   const [owner, setOwner] = useState<PGOwner | null>(null);
   const [pgs, setPgs] = useState<PG[]>([]);
+  const [wallets, setWallets] = useState<Record<string, PGWallet>>({});
+  const [creditInputs, setCreditInputs] = useState<Record<string, string>>({});
+  const [creditLoading, setCreditLoading] = useState<Record<string, boolean>>(
+    {},
+  );
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [subscribeOpen, setSubscribeOpen] = useState(false);
   const [subscribeLoading, setSubscribeLoading] = useState(false);
   const [freezeLoading, setFreezeLoading] = useState(false);
   const [subscribeForm, setSubscribeForm] = useState({
-    plan: 'monthly',
+    plan: "monthly",
     subscriptionStartDate: today,
     subscriptionEndDate: nextMonth,
-    paymentMethod: 'manual',
-    transactionId: ''
+    paymentMethod: "manual",
+    transactionId: "",
   });
   const [selectedImages, setSelectedImages] = useState<string[]>([]);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
-  const getImageUrls = (images?: PG['images']): string[] => {
+  const getImageUrls = (images?: PG["images"]): string[] => {
     if (!images || images.length === 0) return [];
-    if (typeof images[0] === 'string') return images as string[];
-    return (images as { url: string }[]).map(img => img.url).filter(Boolean);
+    if (typeof images[0] === "string") return images as string[];
+    return (images as { url: string }[]).map((img) => img.url).filter(Boolean);
   };
 
   useEffect(() => {
@@ -99,28 +114,73 @@ export function PGOwnerDetail() {
       setLoading(true);
       const [ownerRes, pgsRes] = await Promise.all([
         get<{ success: boolean; data: PGOwner }>(`/admin/pg-owners/${id}`),
-        get<{ success: boolean; data: PG[] }>(`/admin/pg-owners/${id}/pgs`)
+        get<{ success: boolean; data: PG[] }>(`/admin/pg-owners/${id}/pgs`),
       ]);
       if (ownerRes.success) setOwner(ownerRes.data);
-      if (pgsRes.success) setPgs(pgsRes.data);
+      if (pgsRes.success) {
+        setPgs(pgsRes.data);
+        await fetchWallets(pgsRes.data);
+      }
     } catch (err) {
-      console.error('Error fetching data:', err);
+      console.error("Error fetching data:", err);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleVerify = async (status: 'approved' | 'rejected') => {
+  const fetchWallets = async (pgList: PG[]) => {
+    const walletMap: Record<string, PGWallet> = {};
+    await Promise.all(
+      pgList.map(async (pg) => {
+        try {
+          const res = await get<{ success: boolean; data: PGWallet }>(
+            `/wallet/${pg._id}`,
+          );
+          if (res.success) walletMap[pg._id] = res.data;
+        } catch (err) {
+          console.error(`Error fetching wallet for PG ${pg._id}:`, err);
+        }
+      }),
+    );
+    setWallets(walletMap);
+  };
+
+  const handleCredit = async (pgId: string) => {
+    const amount = parseInt(creditInputs[pgId] || "0", 10);
+    if (!amount || amount <= 0) {
+      toast.error("Please enter a valid credit amount");
+      return;
+    }
+    setCreditLoading((prev) => ({ ...prev, [pgId]: true }));
+    try {
+      const res = await post<{
+        success: boolean;
+        data: PGWallet;
+        message?: string;
+      }>("/wallet/credit", { pgId, amount, reason: "Admin manual credit" });
+      if (res.success) {
+        setWallets((prev) => ({ ...prev, [pgId]: res.data }));
+        setCreditInputs((prev) => ({ ...prev, [pgId]: "" }));
+        toast.success(res.message || "Credits added successfully");
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.error || "Failed to add credits");
+    } finally {
+      setCreditLoading((prev) => ({ ...prev, [pgId]: false }));
+    }
+  };
+
+  const handleVerify = async (status: "approved" | "rejected") => {
     if (!owner) return;
     setActionLoading(true);
     try {
       await adminService.verifyPGOwner(owner._id, {
         status,
-        isVerified: status === 'approved'
+        isVerified: status === "approved",
       });
-      navigate('/pg-owner-verification');
+      navigate("/pg-owner-verification");
     } catch (err) {
-      console.error('Error verifying:', err);
+      console.error("Error verifying:", err);
     } finally {
       setActionLoading(false);
     }
@@ -132,15 +192,15 @@ export function PGOwnerDetail() {
       setSubscribeLoading(true);
       const res = await put<{ success: boolean; data: PGOwner }>(
         `/admin/pg-owners/${owner._id}/subscribe`,
-        subscribeForm
+        subscribeForm,
       );
       if (res.success) {
         setOwner(res.data);
-        toast.success('Payment approved and plan activated');
+        toast.success("Payment approved and plan activated");
         setSubscribeOpen(false);
       }
     } catch (err: any) {
-      toast.error(err.response?.data?.error || 'Failed to approve payment');
+      toast.error(err.response?.data?.error || "Failed to approve payment");
     } finally {
       setSubscribeLoading(false);
     }
@@ -148,21 +208,25 @@ export function PGOwnerDetail() {
 
   const submitFreeze = async () => {
     if (!owner) return;
-    if (!window.confirm(`Freeze ${owner.name}'s plan? They will be locked out of the app.`)) {
+    if (
+      !window.confirm(
+        `Freeze ${owner.name}'s plan? They will be locked out of the app.`,
+      )
+    ) {
       return;
     }
     try {
       setFreezeLoading(true);
       const res = await put<{ success: boolean; data: PGOwner }>(
         `/admin/pg-owners/${owner._id}/freeze`,
-        {}
+        {},
       );
       if (res.success) {
         setOwner(res.data);
-        toast.success('Owner plan frozen');
+        toast.success("Owner plan frozen");
       }
     } catch (err: any) {
-      toast.error(err.response?.data?.error || 'Failed to freeze owner');
+      toast.error(err.response?.data?.error || "Failed to freeze owner");
     } finally {
       setFreezeLoading(false);
     }
@@ -181,7 +245,10 @@ export function PGOwnerDetail() {
       <div className="text-center py-20">
         <AlertTriangle className="w-16 h-16 text-yellow-500 mx-auto mb-4" />
         <h2 className="text-xl font-semibold">Owner Not Found</h2>
-        <button onClick={() => navigate('/pg-owner-verification')} className="mt-4 text-primary hover:underline">
+        <button
+          onClick={() => navigate("/pg-owner-verification")}
+          className="mt-4 text-primary hover:underline"
+        >
           Go Back
         </button>
       </div>
@@ -189,33 +256,45 @@ export function PGOwnerDetail() {
   }
 
   const statusConfig = {
-    pending: { color: 'text-yellow-500', bg: 'bg-yellow-500/10', label: 'Pending', icon: Clock },
-    approved: { color: 'text-green-500', bg: 'bg-green-500/10', label: 'Approved', icon: CheckCircle },
-    rejected: { color: 'text-red-500', bg: 'bg-red-500/10', label: 'Rejected', icon: XCircle }
+    pending: {
+      color: "text-yellow-500",
+      bg: "bg-yellow-500/10",
+      label: "Pending",
+      icon: Clock,
+    },
+    approved: {
+      color: "text-green-500",
+      bg: "bg-green-500/10",
+      label: "Approved",
+      icon: CheckCircle,
+    },
+    rejected: {
+      color: "text-red-500",
+      bg: "bg-red-500/10",
+      label: "Rejected",
+      icon: XCircle,
+    },
   };
   const status = statusConfig[owner.status];
   const StatusIcon = status.icon;
 
   return (
     <div>
-      <button 
-        onClick={() => navigate('/pg-owner-verification')}
+      <button
+        onClick={() => navigate("/pg-owner-verification")}
         className="flex items-center gap-2 text-muted-foreground hover:text-foreground mb-4"
       >
         <ArrowLeft className="w-4 h-4" />
         Back to Verification
       </button>
 
-      <PageHeader
-        title={owner.name}
-        description="PG Owner Details"
-      />
+      <PageHeader title={owner.name} description="PG Owner Details" />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Owner Info */}
         <div className="lg:col-span-2 space-y-6">
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }} 
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             className="bg-card/50 backdrop-blur-xl rounded-xl border border-border p-6"
           >
@@ -224,7 +303,9 @@ export function PGOwnerDetail() {
                 <UserCheck className="w-5 h-5" />
                 Owner Information
               </h2>
-              <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium ${status.bg} ${status.color}`}>
+              <span
+                className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium ${status.bg} ${status.color}`}
+              >
                 <StatusIcon className="w-4 h-4" />
                 {status.label}
               </span>
@@ -257,7 +338,7 @@ export function PGOwnerDetail() {
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Email</p>
-                  <p className="font-medium">{owner.email || 'Not provided'}</p>
+                  <p className="font-medium">{owner.email || "Not provided"}</p>
                 </div>
               </div>
 
@@ -266,8 +347,12 @@ export function PGOwnerDetail() {
                   <Calendar className="w-5 h-5 text-primary" />
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Registered Date</p>
-                  <p className="font-medium">{new Date(owner.createdAt).toLocaleDateString()}</p>
+                  <p className="text-sm text-muted-foreground">
+                    Registered Date
+                  </p>
+                  <p className="font-medium">
+                    {new Date(owner.createdAt).toLocaleDateString()}
+                  </p>
                 </div>
               </div>
             </div>
@@ -280,7 +365,8 @@ export function PGOwnerDetail() {
                 <div>
                   <p className="text-sm text-muted-foreground">Address</p>
                   <p className="font-medium">
-                    {owner.address}, {owner.city}, {owner.state} - {owner.pincode}
+                    {owner.address}, {owner.city}, {owner.state} -{" "}
+                    {owner.pincode}
                   </p>
                   {owner.latitude && owner.longitude && (
                     <p className="text-sm text-muted-foreground mt-1">
@@ -293,8 +379,8 @@ export function PGOwnerDetail() {
           </motion.div>
 
           {/* PGs Added */}
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }} 
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
             className="bg-card/50 backdrop-blur-xl rounded-xl border border-border p-6"
@@ -311,13 +397,19 @@ export function PGOwnerDetail() {
             ) : (
               <div className="space-y-4">
                 {pgs.map((pg) => (
-                  <div key={pg._id} className="flex items-start gap-4 p-4 bg-muted/30 rounded-lg">
+                  <div
+                    key={pg._id}
+                    className="flex items-start gap-4 p-4 bg-muted/30 rounded-lg"
+                  >
                     {(() => {
                       const imageUrls = getImageUrls(pg.images);
                       return imageUrls.length > 0 ? (
                         <div
                           className="w-20 h-20 rounded-lg overflow-hidden flex-shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
-                          onClick={() => { setSelectedImages(imageUrls); setCurrentImageIndex(0); }}
+                          onClick={() => {
+                            setSelectedImages(imageUrls);
+                            setCurrentImageIndex(0);
+                          }}
                         >
                           <img
                             src={imageUrls[0]}
@@ -326,10 +418,10 @@ export function PGOwnerDetail() {
                           />
                         </div>
                       ) : (
-                      <div className="w-20 h-20 rounded-lg bg-background flex items-center justify-center flex-shrink-0">
-                        <Building2 className="w-8 h-8 text-muted-foreground" />
-                      </div>
-                    );
+                        <div className="w-20 h-20 rounded-lg bg-background flex items-center justify-center flex-shrink-0">
+                          <Building2 className="w-8 h-8 text-muted-foreground" />
+                        </div>
+                      );
                     })()}
                     <div className="flex-1">
                       <p className="font-medium">{pg.name}</p>
@@ -344,13 +436,42 @@ export function PGOwnerDetail() {
                           </p>
                         ) : null;
                       })()}
+                      <div className="mt-2 flex items-center gap-3">
+                        <span className="text-xs px-2 py-1 rounded bg-blue-500/10 text-blue-500 font-medium">
+                          WhatsApp Credits: {wallets[pg._id]?.balance ?? 0}
+                        </span>
+                      </div>
+                      <div className="mt-2 flex items-center gap-2">
+                        <input
+                          type="number"
+                          min="1"
+                          placeholder="Credits"
+                          value={creditInputs[pg._id] || ""}
+                          onChange={(e) =>
+                            setCreditInputs((prev) => ({
+                              ...prev,
+                              [pg._id]: e.target.value,
+                            }))
+                          }
+                          className="w-24 px-2 py-1 text-sm bg-background border border-border rounded"
+                        />
+                        <button
+                          onClick={() => handleCredit(pg._id)}
+                          disabled={creditLoading[pg._id]}
+                          className="px-3 py-1 text-xs bg-primary text-white rounded hover:bg-primary/90 disabled:opacity-50"
+                        >
+                          {creditLoading[pg._id] ? "Adding..." : "Add Credits"}
+                        </button>
+                      </div>
                     </div>
-                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                      pg.isVerified 
-                        ? 'bg-green-500/10 text-green-500' 
-                        : 'bg-yellow-500/10 text-yellow-500'
-                    }`}>
-                      {pg.isVerified ? 'Verified' : 'Pending'}
+                    <span
+                      className={`px-3 py-1 rounded-full text-xs font-medium ${
+                        pg.isVerified
+                          ? "bg-green-500/10 text-green-500"
+                          : "bg-yellow-500/10 text-yellow-500"
+                      }`}
+                    >
+                      {pg.isVerified ? "Verified" : "Pending"}
                     </span>
                   </div>
                 ))}
@@ -361,29 +482,29 @@ export function PGOwnerDetail() {
 
         {/* Actions */}
         <div className="space-y-6">
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }} 
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
             className="bg-card/50 backdrop-blur-xl rounded-xl border border-border p-6"
           >
             <h2 className="text-lg font-semibold mb-4">Actions</h2>
-            
-            {owner.status === 'pending' ? (
+
+            {owner.status === "pending" ? (
               <div className="space-y-3">
                 <p className="text-sm text-muted-foreground mb-4">
                   Approve this owner to make their PGs available for tenants.
                 </p>
                 <button
-                  onClick={() => handleVerify('approved')}
+                  onClick={() => handleVerify("approved")}
                   disabled={actionLoading}
                   className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors disabled:opacity-50"
                 >
                   <CheckCircle className="w-5 h-5" />
-                  {actionLoading ? 'Processing...' : 'Approve Owner'}
+                  {actionLoading ? "Processing..." : "Approve Owner"}
                 </button>
                 <button
-                  onClick={() => handleVerify('rejected')}
+                  onClick={() => handleVerify("rejected")}
                   disabled={actionLoading}
                   className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors disabled:opacity-50"
                 >
@@ -391,7 +512,7 @@ export function PGOwnerDetail() {
                   Reject Owner
                 </button>
               </div>
-            ) : owner.status === 'approved' ? (
+            ) : owner.status === "approved" ? (
               <div className="space-y-3">
                 <div className="text-center py-2">
                   <CheckCircle className="w-10 h-10 text-green-500 mx-auto mb-2" />
@@ -405,22 +526,47 @@ export function PGOwnerDetail() {
                   <p className="font-medium mb-2">Subscription</p>
                   {owner.isPaid ? (
                     <>
-                      <p>Plan: <span className="font-semibold capitalize">{owner.plan || 'paid'}</span></p>
+                      <p>
+                        Plan:{" "}
+                        <span className="font-semibold capitalize">
+                          {owner.plan || "paid"}
+                        </span>
+                      </p>
                       {owner.subscriptionEndsAt && (
-                        <p>Ends: {new Date(owner.subscriptionEndsAt).toLocaleDateString()}</p>
+                        <p>
+                          Ends:{" "}
+                          {new Date(
+                            owner.subscriptionEndsAt,
+                          ).toLocaleDateString()}
+                        </p>
                       )}
-                      {owner.paymentMethod && <p>Method: {owner.paymentMethod}</p>}
+                      {owner.paymentMethod && (
+                        <p>Method: {owner.paymentMethod}</p>
+                      )}
                       {owner.transactionId && <p>Txn: {owner.transactionId}</p>}
                     </>
                   ) : owner.isTrial ? (
                     <>
-                      <p>Status: <span className="font-semibold text-blue-500">Free Trial</span></p>
+                      <p>
+                        Status:{" "}
+                        <span className="font-semibold text-blue-500">
+                          Free Trial
+                        </span>
+                      </p>
                       {owner.trialEndsAt && (
-                        <p>Trial ends: {new Date(owner.trialEndsAt).toLocaleDateString()}</p>
+                        <p>
+                          Trial ends:{" "}
+                          {new Date(owner.trialEndsAt).toLocaleDateString()}
+                        </p>
                       )}
                     </>
                   ) : (
-                    <p>Status: <span className="font-semibold text-red-500">Frozen / Expired</span></p>
+                    <p>
+                      Status:{" "}
+                      <span className="font-semibold text-red-500">
+                        Frozen / Expired
+                      </span>
+                    </p>
                   )}
                 </div>
 
@@ -429,7 +575,9 @@ export function PGOwnerDetail() {
                   className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
                 >
                   <CreditCard className="w-5 h-5" />
-                  {owner.isPaid ? 'Extend / Change Plan' : 'Approve Payment & Subscribe'}
+                  {owner.isPaid
+                    ? "Extend / Change Plan"
+                    : "Approve Payment & Subscribe"}
                 </button>
                 <button
                   onClick={submitFreeze}
@@ -437,7 +585,7 @@ export function PGOwnerDetail() {
                   className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors disabled:opacity-50"
                 >
                   <Snowflake className="w-5 h-5" />
-                  {freezeLoading ? 'Freezing...' : 'Freeze Account'}
+                  {freezeLoading ? "Freezing..." : "Freeze Account"}
                 </button>
               </div>
             ) : (
@@ -451,8 +599,8 @@ export function PGOwnerDetail() {
             )}
           </motion.div>
 
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }} 
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
             className="bg-yellow-500/10 rounded-xl border border-yellow-500/20 p-6"
@@ -462,7 +610,8 @@ export function PGOwnerDetail() {
               <div>
                 <h3 className="font-medium text-yellow-600">Warning</h3>
                 <p className="text-sm text-yellow-600/80 mt-1">
-                  Upon approval, all {pgs.length} PG properties will be automatically verified and made available for booking.
+                  Upon approval, all {pgs.length} PG properties will be
+                  automatically verified and made available for booking.
                 </p>
               </div>
             </div>
@@ -472,40 +621,53 @@ export function PGOwnerDetail() {
 
       {/* Image Gallery Modal */}
       {selectedImages.length > 0 && (
-        <div 
+        <div
           className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center"
           onClick={() => setSelectedImages([])}
         >
-          <button 
+          <button
             className="absolute top-4 right-4 p-2 bg-white/10 rounded-full hover:bg-white/20 transition-colors"
             onClick={() => setSelectedImages([])}
           >
             <X className="w-6 h-6 text-white" />
           </button>
-          
-          <button 
+
+          <button
             className="absolute left-4 p-3 bg-white/10 rounded-full hover:bg-white/20 transition-colors"
-            onClick={(e) => { e.stopPropagation(); setCurrentImageIndex((currentImageIndex - 1 + selectedImages.length) % selectedImages.length); }}
+            onClick={(e) => {
+              e.stopPropagation();
+              setCurrentImageIndex(
+                (currentImageIndex - 1 + selectedImages.length) %
+                  selectedImages.length,
+              );
+            }}
           >
             <ChevronLeft className="w-8 h-8 text-white" />
           </button>
-          
-          <img 
-            src={selectedImages[currentImageIndex]} 
+
+          <img
+            src={selectedImages[currentImageIndex]}
             alt={`Image ${currentImageIndex + 1}`}
             className="max-h-[90vh] max-w-[90vw] object-contain"
             onClick={(e) => e.stopPropagation()}
           />
-          
-          <button 
+
+          <button
             className="absolute right-4 p-3 bg-white/10 rounded-full hover:bg-white/20 transition-colors"
-            onClick={(e) => { e.stopPropagation(); setCurrentImageIndex((currentImageIndex + 1) % selectedImages.length); }}
+            onClick={(e) => {
+              e.stopPropagation();
+              setCurrentImageIndex(
+                (currentImageIndex + 1) % selectedImages.length,
+              );
+            }}
           >
             <ChevronRight className="w-8 h-8 text-white" />
           </button>
-          
+
           <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/50 px-4 py-2 rounded-full">
-            <p className="text-white text-sm">{currentImageIndex + 1} / {selectedImages.length}</p>
+            <p className="text-white text-sm">
+              {currentImageIndex + 1} / {selectedImages.length}
+            </p>
           </div>
         </div>
       )}
@@ -521,16 +683,25 @@ export function PGOwnerDetail() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between p-4 border-b border-border">
-              <h2 className="text-lg font-semibold">Approve Payment & Activate Plan</h2>
-              <button onClick={() => setSubscribeOpen(false)} className="p-2 hover:bg-accent rounded-lg">
+              <h2 className="text-lg font-semibold">
+                Approve Payment & Activate Plan
+              </h2>
+              <button
+                onClick={() => setSubscribeOpen(false)}
+                className="p-2 hover:bg-accent rounded-lg"
+              >
                 <X className="w-5 h-5" />
               </button>
             </div>
             <div className="p-4">
               <div className="bg-muted/30 rounded-lg p-4 mb-4">
                 <p className="font-semibold">{owner.name}</p>
-                <p className="text-sm text-muted-foreground">Phone: {owner.phone}</p>
-                <p className="text-sm text-muted-foreground">Email: {owner.email || 'Not provided'}</p>
+                <p className="text-sm text-muted-foreground">
+                  Phone: {owner.phone}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Email: {owner.email || "Not provided"}
+                </p>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
@@ -538,7 +709,12 @@ export function PGOwnerDetail() {
                   <label className="block text-sm font-medium mb-1">Plan</label>
                   <select
                     value={subscribeForm.plan}
-                    onChange={(e) => setSubscribeForm({ ...subscribeForm, plan: e.target.value })}
+                    onChange={(e) =>
+                      setSubscribeForm({
+                        ...subscribeForm,
+                        plan: e.target.value,
+                      })
+                    }
                     className="w-full px-3 py-2 rounded-lg border border-border bg-background"
                   >
                     <option value="monthly">Monthly</option>
@@ -547,37 +723,65 @@ export function PGOwnerDetail() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Payment Method</label>
+                  <label className="block text-sm font-medium mb-1">
+                    Payment Method
+                  </label>
                   <input
                     value={subscribeForm.paymentMethod}
-                    onChange={(e) => setSubscribeForm({ ...subscribeForm, paymentMethod: e.target.value })}
+                    onChange={(e) =>
+                      setSubscribeForm({
+                        ...subscribeForm,
+                        paymentMethod: e.target.value,
+                      })
+                    }
                     className="w-full px-3 py-2 rounded-lg border border-border bg-background"
                     placeholder="UPI / Cash / Bank"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Start Date</label>
+                  <label className="block text-sm font-medium mb-1">
+                    Start Date
+                  </label>
                   <input
                     type="date"
                     value={subscribeForm.subscriptionStartDate}
-                    onChange={(e) => setSubscribeForm({ ...subscribeForm, subscriptionStartDate: e.target.value })}
+                    onChange={(e) =>
+                      setSubscribeForm({
+                        ...subscribeForm,
+                        subscriptionStartDate: e.target.value,
+                      })
+                    }
                     className="w-full px-3 py-2 rounded-lg border border-border bg-background"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">End Date</label>
+                  <label className="block text-sm font-medium mb-1">
+                    End Date
+                  </label>
                   <input
                     type="date"
                     value={subscribeForm.subscriptionEndDate}
-                    onChange={(e) => setSubscribeForm({ ...subscribeForm, subscriptionEndDate: e.target.value })}
+                    onChange={(e) =>
+                      setSubscribeForm({
+                        ...subscribeForm,
+                        subscriptionEndDate: e.target.value,
+                      })
+                    }
                     className="w-full px-3 py-2 rounded-lg border border-border bg-background"
                   />
                 </div>
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-medium mb-1">Transaction ID / Reference</label>
+                  <label className="block text-sm font-medium mb-1">
+                    Transaction ID / Reference
+                  </label>
                   <input
                     value={subscribeForm.transactionId}
-                    onChange={(e) => setSubscribeForm({ ...subscribeForm, transactionId: e.target.value })}
+                    onChange={(e) =>
+                      setSubscribeForm({
+                        ...subscribeForm,
+                        transactionId: e.target.value,
+                      })
+                    }
                     className="w-full px-3 py-2 rounded-lg border border-border bg-background"
                     placeholder="Optional payment reference"
                   />
@@ -597,7 +801,7 @@ export function PGOwnerDetail() {
                   className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50"
                 >
                   <CreditCard className="w-5 h-5" />
-                  {subscribeLoading ? 'Activating...' : 'Approve & Subscribe'}
+                  {subscribeLoading ? "Activating..." : "Approve & Subscribe"}
                 </button>
               </div>
             </div>

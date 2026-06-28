@@ -4,6 +4,7 @@ import { ProtectedRoute } from './components/ProtectedRoute';
 import { Login } from './pages/Login';
 import { Dashboard } from './pages/Dashboard';
 import { PGManagement } from './pages/PGManagement';
+import { PGDetail } from './pages/PGDetail';
 import { PGOnboarding } from './pages/PGOnboarding';
 import { Tenants } from './pages/Tenants';
 import { Bookings } from './pages/Bookings';
@@ -23,6 +24,7 @@ import { BulkAddRooms } from './pages/BulkAddRooms';
 import { PGOwnerVerification } from './pages/PGOwnerVerification';
 import { PGOwnerDetail } from './pages/PGOwnerDetail';
 import { AppVersionSettings } from './pages/AppVersionSettings';
+import { Enquiries } from './pages/Enquiries';
 
 export const router = createBrowserRouter([
   {
@@ -39,11 +41,13 @@ export const router = createBrowserRouter([
     children: [
       { index: true, Component: Dashboard },
       { path: 'pg-management', Component: PGManagement },
+      { path: 'pg-management/:id', Component: PGDetail },
       { path: 'pg-onboarding', Component: PGOnboarding },
       { path: 'pg-csv-upload', Component: PGCSVUpload },
       { path: 'bulk-add-rooms', Component: BulkAddRooms },
       { path: 'pg-owner-verification', Component: PGOwnerVerification },
       { path: 'pg-owner-verification/:id', Component: PGOwnerDetail },
+      { path: 'enquiries', Component: Enquiries },
       { path: 'tenants', Component: Tenants },
       { path: 'bookings', Component: Bookings },
       { path: 'payments', Component: Payments },
