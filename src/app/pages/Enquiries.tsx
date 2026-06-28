@@ -10,7 +10,7 @@ import { DataTable } from '../components/DataTable';
 import { Modal, FormField, Badge } from '../../components/Modal';
 import { useToast } from '../components/Toast';
 import { enquiryService, PgEnquiry, EnquiryStatus, EnquirySource } from '../../services/enquiryService';
-import { openWhatsApp, enquiryWhatsAppTemplate } from '../../utils/whatsapp';
+import { WhatsAppPreviewModal } from '../components/WhatsAppPreviewModal';
 
 const SOURCE_META: Record<string, { label: string; color: string; icon: any }> = {
   'mobile-app': { label: 'Mobile App', color: 'bg-blue-500/10 text-blue-500', icon: Smartphone },
@@ -53,7 +53,6 @@ export function Enquiries() {
 
   const [showWhatsApp, setShowWhatsApp] = useState(false);
   const [whatsAppTarget, setWhatsAppTarget] = useState<PgEnquiry | null>(null);
-  const [whatsAppMessage, setWhatsAppMessage] = useState('');
 
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
@@ -187,25 +186,12 @@ export function Enquiries() {
 
   const openWhatsAppPreview = (e: PgEnquiry) => {
     setWhatsAppTarget(e);
-    setWhatsAppMessage(enquiryWhatsAppTemplate(e.ownerName));
     setShowWhatsApp(true);
   };
 
   const closeWhatsAppPreview = () => {
     setShowWhatsApp(false);
     setWhatsAppTarget(null);
-    setWhatsAppMessage('');
-  };
-
-  const sendWhatsApp = () => {
-    if (!whatsAppTarget) return;
-    const trimmed = whatsAppMessage.trim();
-    if (!trimmed) {
-      showToast('error', 'Message cannot be empty');
-      return;
-    }
-    openWhatsApp(whatsAppTarget.phone, trimmed);
-    closeWhatsAppPreview();
   };
 
   const confirmDeleteAll = async () => {
@@ -844,62 +830,12 @@ export function Enquiries() {
 
       {/* WHATSAPP PREVIEW / EDIT MODAL */}
       {showWhatsApp && whatsAppTarget && (
-        <Modal
-          isOpen={showWhatsApp}
+        <WhatsAppPreviewModal
+          open={showWhatsApp}
           onClose={closeWhatsAppPreview}
-          title="Send WhatsApp Message"
-          size="lg"
-        >
-          <div className="space-y-4">
-            <div className="flex items-start gap-3 p-3 rounded-lg bg-green-500/10">
-              <MessageCircle className="w-5 h-5 text-green-500 mt-0.5" />
-              <div className="flex-1 min-w-0">
-                <p className="font-medium">Message to {whatsAppTarget.ownerName}</p>
-                <p className="text-sm text-muted-foreground">
-                  Sending to <span className="font-mono">{whatsAppTarget.phone}</span> via WhatsApp.
-                  You can edit the message before sending.
-                </p>
-              </div>
-            </div>
-
-            <FormField label="Message" required>
-              <textarea
-                value={whatsAppMessage}
-                onChange={(e) => setWhatsAppMessage(e.target.value)}
-                rows={18}
-                className="w-full px-3 py-2 rounded-lg border border-border bg-background font-mono text-xs leading-relaxed"
-                placeholder="Type your WhatsApp message…"
-              />
-              <div className="flex items-center justify-between mt-1">
-                <p className="text-xs text-muted-foreground">
-                  This will open WhatsApp Web / App in a new tab with the message pre-filled.
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  {whatsAppMessage.length} chars
-                </p>
-              </div>
-            </FormField>
-
-            <div className="flex flex-wrap items-center justify-end gap-3 pt-2 border-t border-border">
-              <button
-                type="button"
-                onClick={closeWhatsAppPreview}
-                className="px-4 py-2 rounded-lg border border-border hover:bg-accent transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={sendWhatsApp}
-                disabled={!whatsAppMessage.trim()}
-                className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-              >
-                <MessageCircle className="w-4 h-4" />
-                Send on WhatsApp
-              </button>
-            </div>
-          </div>
-        </Modal>
+          phone={whatsAppTarget.phone}
+          ownerName={whatsAppTarget.ownerName}
+        />
       )}
     </div>
   );

@@ -5,12 +5,13 @@ import {
   ArrowLeft, MapPin, Users, CheckCircle, Clock, Shield, Home, Building2,
   Snowflake, UserPlus, DoorOpen, AlertCircle, Loader2, PowerOff, Power, RefreshCw,
   Trash2, Phone, Mail, Calendar, Bed, Hash, FileText, Camera, Upload, X,
-  Wind, Bath, Layers, Briefcase, MapPinned, Edit3
+  Wind, Bath, Layers, Briefcase, MapPinned, Edit3, MessageCircle
 } from 'lucide-react';
 import { PageHeader } from '../components/PageHeader';
 import { Modal, FormField, Badge } from '../../components/Modal';
 import { useToast } from '../components/Toast';
 import { adminService } from '../../services/adminService';
+import { WhatsAppPreviewModal } from '../components/WhatsAppPreviewModal';
 import { PG, PGRoom, Tenant } from '../../types/api';
 
 type TabKey = 'overview' | 'tenants' | 'rooms' | 'freeze';
@@ -124,6 +125,8 @@ export function PGDetail() {
   const [freezing, setFreezing] = useState(false);
 
   const [showVerifyConfirm, setShowVerifyConfirm] = useState(false);
+
+  const [whatsAppTarget, setWhatsAppTarget] = useState<{ name: string; phone: string; label: string } | null>(null);
 
   const tenantPhotoRef = useRef<HTMLInputElement>(null);
   const tenantAadhaarRef = useRef<HTMLInputElement>(null);
@@ -552,20 +555,44 @@ export function PGDetail() {
                     {pg.phone && (
                       <div className="flex items-center gap-3 p-3 bg-muted/30 rounded-lg">
                         <Phone className="w-4 h-4 text-muted-foreground" />
-                        <div>
+                        <div className="flex-1 min-w-0">
                           <p className="text-xs text-muted-foreground">Phone</p>
                           <p className="text-sm font-medium">{pg.phone}</p>
                         </div>
+                        <button
+                          type="button"
+                          onClick={() => setWhatsAppTarget({ name: pg.name, phone: pg.phone, label: 'PG' })}
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-green-500 text-white hover:bg-green-600 transition-colors shrink-0"
+                          title="Open WhatsApp chat with pre-filled message"
+                        >
+                          <MessageCircle className="w-3.5 h-3.5" />
+                          WhatsApp
+                        </button>
                       </div>
                     )}
                     {pg.ownerId && (
                       <div className="flex items-center gap-3 p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
                         <Users className="w-4 h-4 text-blue-500" />
-                        <div>
+                        <div className="flex-1 min-w-0">
                           <p className="text-xs text-blue-500">Owner</p>
                           <p className="text-sm font-medium">{pg.ownerId.name || '-'}</p>
                           {pg.ownerId.phone && <p className="text-xs text-muted-foreground">{pg.ownerId.phone}</p>}
                         </div>
+                        {pg.ownerId.phone && (
+                          <button
+                            type="button"
+                            onClick={() => setWhatsAppTarget({
+                              name: pg.ownerId.name || 'Owner',
+                              phone: pg.ownerId.phone,
+                              label: 'PG Owner'
+                            })}
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-green-500 text-white hover:bg-green-600 transition-colors shrink-0"
+                            title="Open WhatsApp chat with pre-filled message"
+                          >
+                            <MessageCircle className="w-3.5 h-3.5" />
+                            WhatsApp
+                          </button>
+                        )}
                       </div>
                     )}
                   </div>
@@ -1459,6 +1486,17 @@ export function PGDetail() {
             </div>
           </div>
         </Modal>
+      )}
+
+      {/* WHATSAPP PREVIEW / EDIT MODAL */}
+      {whatsAppTarget && (
+        <WhatsAppPreviewModal
+          open={!!whatsAppTarget}
+          onClose={() => setWhatsAppTarget(null)}
+          phone={whatsAppTarget.phone}
+          ownerName={whatsAppTarget.name}
+          context={`Recipient: ${whatsAppTarget.label}`}
+        />
       )}
     </div>
   );
